@@ -6,7 +6,7 @@
 
 import copy
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from xformers._deprecation_warning import deprecated_function
 from xformers.components.residual import ResidualNormStyle
@@ -26,7 +26,7 @@ class BasicLayerConfig:
 
 
 def get_hierarchical_configuration(
-    layer_base_configs: List[BasicLayerConfig],
+    layer_base_configs: list[BasicLayerConfig],
     residual_norm_style: ResidualNormStyle = ResidualNormStyle.Pre,
     use_rotary_embeddings: bool = True,
     mlp_multiplier: int = 4,
@@ -42,7 +42,7 @@ def get_hierarchical_configuration(
     """
     deprecated_function(get_hierarchical_configuration)
 
-    base_config: Dict[str, Any] = {
+    base_config: dict[str, Any] = {
         "block_type": "encoder",
         "dim_model": 0,
         "use_triton": False,
@@ -105,9 +105,9 @@ def get_hierarchical_configuration(
             assert layer_base_config.embedding % dim_head == 0
 
         # Fill in the attention mechanism
-        lc["multi_head_config"]["attention"][
-            "name"
-        ] = layer_base_config.attention_mechanism
+        lc["multi_head_config"]["attention"]["name"] = (
+            layer_base_config.attention_mechanism
+        )
 
         # FIll in the feedforward
         lc["feedforward_config"]["name"] = layer_base_config.feedforward

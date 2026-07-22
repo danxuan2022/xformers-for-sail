@@ -4,20 +4,21 @@
 # LICENSE file in the root directory of this source tree.
 
 import pytest
+from xformers.components import build_patch_embedding, PatchEmbeddingConfig
+from xformers.components.positional_embedding import (
+    build_positional_embedding,
+    POSITION_EMBEDDING_REGISTRY,
+)
+
 import torch
 
-from xformers.components import PatchEmbeddingConfig, build_patch_embedding
-from xformers.components.positional_embedding import (
-    POSITION_EMBEDDING_REGISTRY,
-    build_positional_embedding,
-)
 
 BATCH = 20
 SEQ = 512
 MODEL = 384
-assert (
-    POSITION_EMBEDDING_REGISTRY.keys()
-), "Positional encoding layers should have been registered"
+assert POSITION_EMBEDDING_REGISTRY.keys(), (
+    "Positional encoding layers should have been registered"
+)
 
 
 @pytest.mark.parametrize("encoding_name", POSITION_EMBEDDING_REGISTRY.keys())

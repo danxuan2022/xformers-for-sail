@@ -6,13 +6,14 @@
 import functools
 
 import pytest
-import torch
-from torch import nn
-
 from xformers import _is_triton_available
 from xformers.components.attention._sputnik_sparse import SparseCS
 from xformers.components.attention.attention_mask import AttentionMask
 from xformers.components.attention.core import scaled_dot_product_attention
+
+import torch
+from torch import nn
+
 
 _is_blocksparse_available = _is_triton_available()
 

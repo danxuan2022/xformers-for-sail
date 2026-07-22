@@ -4,7 +4,6 @@
 # LICENSE file in the root directory of this source tree.
 
 import pytest
-import torch
 
 # needed to register custom ops
 import xformers  # noqa: F401
@@ -15,6 +14,9 @@ from xformers.components.attention.core import (
     _create_random_sparsity,
     _sparse_bmm,
 )
+
+import torch
+
 
 cuda_only = pytest.mark.skipif(
     not torch.cuda.is_available() or not torch.version.cuda, reason="requires CUDA"
@@ -39,7 +41,9 @@ def _baseline_matmul_with_sparse_mask(
     b = b.transpose(-2, -1)
 
     # compute matmul for elements within the mask
-    val = (a[idxs[:-2] + (idxs[-2], slice(None))] * b[idxs[:-2] + (idxs[-1], slice(None))]).sum(-1)  # type: ignore
+    val = (
+        a[idxs[:-2] + (idxs[-2], slice(None))] * b[idxs[:-2] + (idxs[-1], slice(None))]
+    ).sum(-1)  # type: ignore
 
     out_shape = a.shape[:-1] + (b.shape[-2],)
     res = torch.sparse_coo_tensor(torch.stack(idxs), val, out_shape)

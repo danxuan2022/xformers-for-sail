@@ -4,12 +4,14 @@
 # LICENSE file in the root directory of this source tree.
 
 from typing import Any, Tuple, TypeVar
+from typing_extensions import Literal as L
+
+from pyre_extensions import TypeVarTuple, Unpack
 
 import torch
 import torch.nn as nn
-from pyre_extensions import TypeVarTuple, Unpack
 from torch import Tensor
-from typing_extensions import Literal as L
+
 
 Ts = TypeVarTuple("Ts")
 N = TypeVar("N", bound=int)
@@ -375,12 +377,7 @@ def test_transpose() -> None:
     y4: Tensor[torch.float32, L[3], L[2], L[4], L[5], L[6]] = x.transpose(1, 0)
     y5: Tensor[torch.float32, L[2], L[3], L[4], L[6], L[5]] = x.transpose(-1, -2)
     not_yet_supported: Tensor[
-        torch.float32,
-        L[3],
-        L[2],
-        L[4],
-        L[5],
-        L[6]
+        torch.float32, L[3], L[2], L[4], L[5], L[6]
         # pyre-fixme[6]: Expected `typing_extensions.Literal[0]` for 2nd param but got
         #  `typing_extensions.Literal[4]`.
     ] = x.transpose(1, 4)
@@ -527,9 +524,9 @@ def test_where() -> None:
     x: torch.Tensor[torch.float32, L[2], L[3]]
 
     good: Tuple[torch.LongTensor[int, int], torch.LongTensor[int, int]] = torch.where(x)
-    bad: Tuple[
-        torch.LongTensor[int, int], torch.LongTensor[int, int], L[99]
-    ] = torch.where(x)
+    bad: Tuple[torch.LongTensor[int, int], torch.LongTensor[int, int], L[99]] = (
+        torch.where(x)
+    )
 
     y: torch.Tensor[torch.float32, L[2], L[1]]
     not_broadcastable: torch.Tensor[torch.float32, L[2], L[99]]
@@ -1215,9 +1212,7 @@ def test_meshgrid() -> None:
         torch.Tensor[torch.float32, L[2], L[3]],
         torch.Tensor[torch.float32, L[2], L[3]],
     ] = torch.meshgrid(x1, x2)
-    y3: Tuple[
-        torch.Tensor[torch.float32, L[2]],
-    ] = torch.meshgrid(x1)
+    y3: Tuple[torch.Tensor[torch.float32, L[2]],] = torch.meshgrid(x1)
 
     x4: Tensor
     xs = tuple(x4 for _ in range(5))
@@ -1369,9 +1364,9 @@ def test_cat() -> None:
         (x1, x1_last_is_5, x1_last_is_6), dim=-1
     )
 
-    y_many_element_tuple: torch.Tensor[
-        torch.float32, Unpack[Tuple[Any, ...]]
-    ] = torch.cat((x1, x1, x1, x1))
+    y_many_element_tuple: torch.Tensor[torch.float32, Unpack[Tuple[Any, ...]]] = (
+        torch.cat((x1, x1, x1, x1))
+    )
     y_list: torch.Tensor[torch.float32, Unpack[Tuple[Any, ...]]] = torch.cat([x1, x1])
 
 

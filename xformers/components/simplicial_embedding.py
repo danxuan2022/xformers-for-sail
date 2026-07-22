@@ -4,9 +4,10 @@
 # LICENSE file in the root directory of this source tree.
 
 from dataclasses import asdict, dataclass
-from typing import Optional, Type, TypeVar
+from typing import Optional, TypeVar
 
 import torch
+
 
 Self = TypeVar("Self", bound="SimplicialEmbedding")
 
@@ -36,9 +37,9 @@ class SimplicialEmbedding(torch.nn.Module):
         self.temperature = temperature
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        assert (
-            x.shape[-1] % self.L == 0
-        ), f"The embedding dimension {x.shape[-1]} is not divisible by the chosen L parameter {self.L}"
+        assert x.shape[-1] % self.L == 0, (
+            f"The embedding dimension {x.shape[-1]} is not divisible by the chosen L parameter {self.L}"
+        )
 
         # Separate the input tensor into V chunks
         B, C, E = x.shape
@@ -57,7 +58,7 @@ class SimplicialEmbedding(torch.nn.Module):
         return Vs.reshape(B, C, E)
 
     @classmethod
-    def from_config(cls: Type[Self], config: SimplicialEmbeddingConfig) -> Self:
+    def from_config(cls: type[Self], config: SimplicialEmbeddingConfig) -> Self:
         # Generate the class inputs from the config
         fields = asdict(config)
 

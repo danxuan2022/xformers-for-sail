@@ -3,7 +3,7 @@
 # This source code is licensed under the BSD license found in the
 # LICENSE file in the root directory of this source tree.
 
-from typing import Any, Iterable, List, Mapping, Optional, Tuple, Union
+from typing import Any, Iterable, Mapping, Optional, Union
 
 import torch
 
@@ -12,10 +12,10 @@ from .attn_bias import AttentionBias
 from .common import (
     AttentionBwOpBase,
     AttentionFwOpBase,
+    bmk2bmhk,
     Context,
     Gradients,
     Inputs,
-    bmk2bmhk,
 )
 
 
@@ -29,7 +29,7 @@ def _bmhk2bmk_contiguous(tensor) -> torch.Tensor:
 
 
 def _get_tensor_bias_bmk(
-    attn_bias: Optional[Union[torch.Tensor, AttentionBias]]
+    attn_bias: Optional[Union[torch.Tensor, AttentionBias]],
 ) -> Optional[torch.Tensor]:
     if not isinstance(attn_bias, torch.Tensor):
         assert attn_bias is None
@@ -69,7 +69,7 @@ class FwOp(AttentionFwOpBase):
     _TEST_K = [2, 3, 8, 16, 32]
 
     @classmethod
-    def not_supported_reasons(cls, d: Inputs) -> List[str]:
+    def not_supported_reasons(cls, d: Inputs) -> list[str]:
         reasons = super(FwOp, cls).not_supported_reasons(d)
         if (
             not reasons
@@ -88,7 +88,7 @@ class FwOp(AttentionFwOpBase):
     @classmethod
     def apply(
         cls, inp: Inputs, needs_gradient: bool
-    ) -> Tuple[torch.Tensor, Optional[Context]]:
+    ) -> tuple[torch.Tensor, Optional[Context]]:
         if inp.scale is not None:
             raise NotImplementedError("Unsupport custom scale")
         num_heads = inp.query.shape[2]
@@ -139,7 +139,7 @@ class BwOp(AttentionBwOpBase):
     NAME = "smallkB"
 
     @classmethod
-    def not_supported_reasons(cls, d: Inputs) -> List[str]:
+    def not_supported_reasons(cls, d: Inputs) -> list[str]:
         reasons = super(BwOp, cls).not_supported_reasons(d)
         if isinstance(d.attn_bias, torch.Tensor) and d.attn_bias.stride(1) != 0:
             reasons.append("bias with non-zero stride not supported")

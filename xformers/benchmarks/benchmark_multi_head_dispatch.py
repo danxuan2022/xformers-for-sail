@@ -4,15 +4,16 @@
 # LICENSE file in the root directory of this source tree.
 
 
-from typing import Any, Dict
+from typing import Any
+
+import triton
 
 import torch
 import torch.nn as nn
-import triton
-
-from xformers.benchmarks.utils import TestCase, pretty_plot, pretty_print
+from xformers.benchmarks.utils import pretty_plot, pretty_print, TestCase
 from xformers.components import MultiHeadDispatch
 from xformers.components.attention import ScaledDotProduct
+
 
 SHAPES = [
     (8, 384, 128),
@@ -34,7 +35,7 @@ def bench_multihead_dispatch(backward: bool, self_attention: bool):
     sa = " (self_attn)" if self_attention else ""
 
     for dtype in [torch.float16, torch.float32]:
-        results: Dict[str, Any] = {}
+        results: dict[str, Any] = {}
 
         for B, M, K in SHAPES:
             for heads in N_HEADS:

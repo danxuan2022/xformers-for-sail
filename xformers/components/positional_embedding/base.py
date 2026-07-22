@@ -6,9 +6,10 @@
 
 from abc import ABCMeta, abstractmethod
 from dataclasses import asdict, dataclass
-from typing import Type, TypeVar
+from typing import TypeVar
 
 import torch.nn as nn
+
 
 Self = TypeVar("Self", bound="PositionEmbedding")
 
@@ -26,7 +27,7 @@ class PositionEmbedding(nn.Module, metaclass=ABCMeta):
         super().__init__()
 
     @classmethod
-    def from_config(cls: Type[Self], config: PositionEmbeddingConfig) -> Self:
+    def from_config(cls: type[Self], config: PositionEmbeddingConfig) -> Self:
         # Generate the class inputs from the config
         fields = asdict(config)
 

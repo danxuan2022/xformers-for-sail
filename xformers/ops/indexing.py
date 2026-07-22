@@ -123,7 +123,9 @@ def scaled_index_add(
 
     .. code-block:: python
 
-        return torch.index_add(input, dim=0, source=scaling * src, index=indices, alpha=alpha)
+        return torch.index_add(
+            input, dim=0, source=scaling * src, index=indices, alpha=alpha
+        )
     """
 
     return _ScaledIndexAdd.apply(input, index, source, scaling, alpha)
@@ -232,6 +234,8 @@ def index_select_cat(
 
     .. code-block:: python
 
-        return torch.cat([s[i.long()].flatten() for s, i in zip(sources, indices)], dim=0)
+        return torch.cat(
+            [s[i.long()].flatten() for s, i in zip(sources, indices)], dim=0
+        )
     """
     return _IndexSelectCat.apply(*sources, *indices)

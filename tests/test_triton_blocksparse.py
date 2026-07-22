@@ -6,12 +6,12 @@
 import functools
 
 import pytest
-import torch
-
 import xformers
 from xformers.components import MultiHeadDispatch
 from xformers.components.attention import build_attention
 from xformers.components.attention.attention_patterns import block_sparsify_tensor
+
+import torch
 
 
 def catch_oor(fn):
@@ -40,9 +40,10 @@ _matmul_types = []
 if _triton_available:
     try:
         import triton  # noqa: F401
-        from triton.ops.blocksparse import matmul as blocksparse_matmul
-        from triton.ops.blocksparse import softmax as blocksparse_softmax
-
+        from triton.ops.blocksparse import (
+            matmul as blocksparse_matmul,
+            softmax as blocksparse_softmax,
+        )
         from xformers.components.attention import BlockSparseAttention
 
         _matmul_types = ["sdd", "dsd", "dds"]

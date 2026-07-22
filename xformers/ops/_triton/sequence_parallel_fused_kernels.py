@@ -5,12 +5,13 @@
 
 
 import itertools
-from typing import List, Optional, Set, Tuple, cast
+from typing import cast, Optional
 
-import torch
 import triton
 import triton.language as tl
 from triton.ops.matmul_perf_model import early_config_prune, estimate_matmul_time
+
+import torch
 
 
 def init_to_zero(*names):
@@ -554,7 +555,7 @@ def _xformers_seqpar_matmul_kernel(
     )
 
 
-AUTOTUNED_SIZES: Set[Tuple[int, Tuple[int, ...], int, torch.dtype]] = set()
+AUTOTUNED_SIZES: set[tuple[int, tuple[int, ...], int, torch.dtype]] = set()
 
 
 def common_alignment(*args):
@@ -567,9 +568,9 @@ def common_alignment(*args):
 def _launch_triton_matmul(
     a_my_shard: Optional[torch.Tensor],
     a: torch.Tensor,
-    bs: List[torch.Tensor],
-    cs: List[torch.Tensor],
-    cs_my_shard: Optional[List[torch.Tensor]],
+    bs: list[torch.Tensor],
+    cs: list[torch.Tensor],
+    cs_my_shard: Optional[list[torch.Tensor]],
     my_rank: int,
     world_size: int,
     wait_counters: Optional[torch.Tensor],
@@ -595,9 +596,9 @@ def _launch_triton_matmul(
     assert all(b.shape[0] == K for b in bs)
     assert all(c.shape[0] == M for c in cs)
     assert all(c.shape[1] == N for c, N in zip(cs, Ns))
-    stride_am, stride_ak = cast(Tuple[int, int], a.stride())
-    strides_bk, strides_bn = zip(*(cast(Tuple[int, int], b.stride()) for b in bs))
-    strides_cm, strides_cn = zip(*(cast(Tuple[int, int], c.stride()) for c in cs))
+    stride_am, stride_ak = cast(tuple[int, int], a.stride())
+    strides_bk, strides_bn = zip(*(cast(tuple[int, int], b.stride()) for b in bs))
+    strides_cm, strides_cn = zip(*(cast(tuple[int, int], c.stride()) for c in cs))
     assert stride_am == 1 or stride_ak == 1
     assert all(s == 1 for s in strides_bk) or all(s == 1 for s in strides_bn)
     assert all(s == 1 for s in strides_cm) or all(s == 1 for s in strides_cn)

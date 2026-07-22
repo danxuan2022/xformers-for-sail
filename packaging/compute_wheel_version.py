@@ -7,6 +7,7 @@ import subprocess
 from pathlib import Path
 from typing import Optional
 
+
 # TODO: consolidate with the code in build_conda.py
 THIS_PATH = Path(__file__).resolve()
 version_from_file = (THIS_PATH.parents[1] / "version.txt").read_text().strip()

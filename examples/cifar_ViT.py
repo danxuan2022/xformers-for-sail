@@ -15,12 +15,12 @@ import math
 from enum import Enum
 
 import pytorch_lightning as pl
-import torch
 from pl_bolts.datamodules import CIFAR10DataModule
-from torch import nn
 from torchmetrics import Accuracy
-
 from xformers.factory import xFormer, xFormerConfig
+
+import torch
+from torch import nn
 
 
 class Classifier(str, Enum):
@@ -51,7 +51,6 @@ class VisionTransformer(pl.LightningModule):
         linear_warmup_ratio=0.1,
         classifier: Classifier = Classifier.TOKEN,
     ):
-
         super().__init__()
 
         # all the inputs are saved under self.hparams (hyperparams)

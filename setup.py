@@ -18,18 +18,21 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
 import setuptools
+
 import torch
 from torch.utils.cpp_extension import (
-    CUDA_HOME,
     BuildExtension,
     CppExtension,
+    CUDA_HOME,
     CUDAExtension,
 )
 
+
 this_dir = os.path.dirname(__file__)
+USE_PPU = "PPU_SDK" in os.environ.keys()
 pt_attn_compat_file_path = os.path.join(
     this_dir, "xformers", "ops", "fmha", "torch_attention_compat.py"
 )
@@ -44,7 +47,7 @@ sys.modules[module_name] = attn_compat_module
 spec.loader.exec_module(attn_compat_module)
 
 
-def get_extra_nvcc_flags_for_build_type(cuda_version: int) -> List[str]:
+def get_extra_nvcc_flags_for_build_type(cuda_version: int) -> list[str]:
     build_type = os.environ.get("XFORMERS_BUILD_TYPE", "RelWithDebInfo").lower()
     if build_type == "relwithdebinfo":
         if cuda_version >= 1201 and cuda_version < 1202:
@@ -81,7 +84,8 @@ def get_flash_version() -> str:
     flash_dir = Path(__file__).parent / "third_party" / "flash-attention"
     try:
         return subprocess.check_output(
-            ["git", "describe", "--tags", "--always"],
+            #     ["git", "describe", "--tags", "--always"],
+            ["git", "branch"],
             cwd=flash_dir,
         ).decode("ascii")[:-1]
     except subprocess.CalledProcessError:
@@ -218,6 +222,8 @@ def get_flash_attention_extensions(cuda_version: int, extra_compile_args):
 
     sources = ["csrc/flash_attn/flash_api.cpp"]
     for f in glob.glob(os.path.join(flash_root, "csrc", "flash_attn", "src", "*.cu")):
+        if "hdim224" in Path(f).name:
+            continue
         sources.append(str(Path(f).relative_to(flash_root)))
     common_extra_compile_args = ["-DFLASHATTENTION_DISABLE_ALIBI"]
     return [
@@ -234,6 +240,20 @@ def get_flash_attention_extensions(cuda_version: int, extra_compile_args):
                     "-U__CUDA_NO_HALF_CONVERSIONS__",
                     "-U__CUDA_NO_HALF2_OPERATORS__",
                     "-U__CUDA_NO_BFLOAT16_CONVERSIONS__",
+                    "-mllvm",
+                    "-alippu-max-vreg-count=256",
+                    "-mllvm",
+                    "-alippu-sink-matrix-addr=true",
+                    "-mllvm",
+                    "-alippu-max-alloca-byte-size=320",
+                    "-mllvm",
+                    "-alippu-sink-async-addr=true",
+                    "-mllvm",
+                    "-alippu-alloca-half-ldst-simplify=true",
+                    "-mllvm",
+                    "-alippu-sink-load-addr=true",
+                    "-mllvm",
+                    "-alippu-sink-store-addr=true",
                     "--expt-relaxed-constexpr",
                     "--expt-extended-lambda",
                     "--use_fast_math",
@@ -263,8 +283,93 @@ def rename_cpp_cu(cpp_files):
 def get_extensions():
     extensions_dir = os.path.join("xformers", "csrc")
 
-    sources = glob.glob(os.path.join(extensions_dir, "**", "*.cpp"), recursive=True)
-    source_cuda = glob.glob(os.path.join(extensions_dir, "**", "*.cu"), recursive=True)
+    if USE_PPU:
+        # Check if we should build only mem_effi (memory-efficient attention) like CMakeLists
+        # Set XFORMERS_BUILD_MEM_EFFI_ONLY=1 to enable
+        build_mem_effi_only = os.getenv("XFORMERS_BUILD_MEM_EFFI_ONLY", "1") == "1"
+
+        if build_mem_effi_only:
+            # Match CMakeLists.txt: only compile attention*.cu + autogen_ppu/impl/*.cu
+            # Include attention.cpp for schema definitions (TORCH_SELECTIVE_SCHEMA)
+            sources = [
+                os.path.join(
+                    extensions_dir, "attention", "attention.cpp"
+                ),
+            ]
+            source_cuda = glob.glob(
+                os.path.join(
+                    extensions_dir, "attention/cuda/fmha", "attention*.cu"
+                ),
+                recursive=False,
+            )
+            source_cuda += glob.glob(
+                os.path.join(
+                    extensions_dir, "attention/cuda/fmha/autogen_ppu/impl/", "*.cu"
+                ),
+                recursive=False,
+            )
+            # Include forward/backward generic files for operator registration
+            # These contain TORCH_LIBRARY_IMPL code that registers operators with PyTorch
+            source_cuda += glob.glob(
+                os.path.join(
+                    extensions_dir, "attention/cuda/fmha", "attention_forward_generic.cu"
+                ),
+                recursive=False,
+            )
+            source_cuda += glob.glob(
+                os.path.join(
+                    extensions_dir, "attention/cuda/fmha", "attention_backward_generic.cu"
+                ),
+                recursive=False,
+            )
+        else:
+            sources = glob.glob(os.path.join(extensions_dir, "**", "*.cpp"), recursive=True)
+            source_cuda = glob.glob(
+                os.path.join(extensions_dir, "indexing", "*.cu"), recursive=True
+            )
+            source_cuda += glob.glob(
+                os.path.join(
+                    extensions_dir,
+                    "attention/cuda/fmha",
+                    "attention_cutlass_rand_uniform.cu",
+                ),
+                recursive=False,
+            )
+            source_cuda += glob.glob(
+                os.path.join(extensions_dir, "attention/cuda", "*.cu"), recursive=False
+            )
+            source_cuda += glob.glob(
+                os.path.join(
+                    extensions_dir, "attention/cuda/fmha/autogen_ppu/impl/", "*.cu"
+                ),
+                recursive=False,
+            )
+            source_cuda += glob.glob(
+                os.path.join(
+                    extensions_dir, "attention/cuda/fmha", "attention_forward_generic.cu"
+                ),
+                recursive=False,
+            )
+            source_cuda += glob.glob(
+                os.path.join(
+                    extensions_dir, "attention/cuda/fmha", "attention_backward_generic.cu"
+                ),
+                recursive=False,
+            )
+            source_cuda += glob.glob(
+                os.path.join(extensions_dir, "attention/cuda/fmha", "decoder.cu"),
+                recursive=False,
+            )
+            source_cuda += glob.glob(
+                os.path.join(extensions_dir, "attention/cuda/fmha", "small_k.cu"),
+                recursive=False,
+            )
+            # source_cuda += glob.glob(os.path.join(extensions_dir, "swiglu/cuda", "silu_bw_fused.cu"), recursive=False)
+    else:
+        sources = glob.glob(os.path.join(extensions_dir, "**", "*.cpp"), recursive=True)
+        source_cuda = glob.glob(
+            os.path.join(extensions_dir, "**", "*.cu"), recursive=True
+        )
     fmha_source_cuda = glob.glob(
         os.path.join(extensions_dir, "**", "fmha", "**", "*.cu"), recursive=True
     )
@@ -293,18 +398,30 @@ def get_extensions():
     # By default, we try to link to torch internal CUTLASS attention implementation
     # and silently switch to local CUTLASS attention build if no compatibility
     # If we force 'torch CUTLASS switch' then setup will fail when no compatibility
+    # For PPU mem_effi_only build, we always want to use xformers' own CUTLASS implementation
+    # not PyTorch's, so we should not remove fmha_source_cuda files
     if (
         xformers_pt_cutlass_attn is None or xformers_pt_cutlass_attn == "1"
     ) and attn_compat_module.is_pt_cutlass_compatible(
         force=xformers_pt_cutlass_attn == "1"
-    ):
+    ) and not (USE_PPU and build_mem_effi_only):
         source_cuda = list(set(source_cuda) - set(fmha_source_cuda))
 
-    cutlass_dir = os.path.join(this_dir, "third_party", "cutlass", "include")
-    cutlass_util_dir = os.path.join(
-        this_dir, "third_party", "cutlass", "tools", "util", "include"
-    )
-    cutlass_examples_dir = os.path.join(this_dir, "third_party", "cutlass", "examples")
+    # For PPU mem_effi only build, we use cutlass2 (not the full cutlass)
+    # This matches the CMakeLists.txt which uses xformers/third_party/cutlass2
+    if USE_PPU and build_mem_effi_only:
+        cutlass_dir = os.path.join(this_dir, "third_party", "cutlass2", "include")
+        cutlass_util_dir = os.path.join(
+            this_dir, "third_party", "cutlass2", "tools", "util", "include"
+        )
+        cutlass_examples_dir = None  # Not needed for cutlass2
+    else:
+        cutlass_dir = os.path.join(this_dir, "third_party", "cutlass", "include")
+        cutlass_util_dir = os.path.join(
+            this_dir, "third_party", "cutlass", "tools", "util", "include"
+        )
+        cutlass_examples_dir = os.path.join(this_dir, "third_party", "cutlass", "examples")
+
     if not os.path.exists(cutlass_dir):
         raise RuntimeError(
             f"CUTLASS submodule not found at {cutlass_dir}. "
@@ -333,7 +450,7 @@ def get_extensions():
     use_pt_flash = False
 
     if (
-        (torch.cuda.is_available() and ((CUDA_HOME is not None)))
+        (torch.cuda.is_available() and (CUDA_HOME is not None))
         or os.getenv("FORCE_CUDA", "0") == "1"
         or os.getenv("TORCH_CUDA_ARCH_LIST", "") != ""
     ):
@@ -344,8 +461,9 @@ def get_extensions():
             sputnik_dir,
             cutlass_dir,
             cutlass_util_dir,
-            cutlass_examples_dir,
         ]
+        if cutlass_examples_dir is not None:
+            include_dirs.append(cutlass_examples_dir)
         nvcc_flags = [
             "-DHAS_PYTORCH",
             "--use_fast_math",
@@ -373,35 +491,49 @@ def get_extensions():
                 "-Xcompiler",
                 "/Zc:__cplusplus",
             ]
+        if "PPU_SDK" in os.environ.keys():
+            nvcc_flags += ["-DUSE_PPU", "-DUSE_AIU", "-DACOMPUTE_VERSION=10000"]
+            extra_compile_args["cxx"].append("-DUSE_PPU")
+            extra_compile_args["cxx"].append("-DUSE_AIU")
+            extra_compile_args["cxx"].append("-DACOMPUTE_VERSION=10000")
+        # Enable xformers attention operator registration by default when building via setup.py
+        # Set XFORMERS_ENABLE_ATTENTION_OPS=0 to disable (e.g., for PyTorch CMake build)
+        if os.getenv("XFORMERS_ENABLE_ATTENTION_OPS", "1") != "0":
+            nvcc_flags.append("-DXFORMERS_ENABLE_ATTENTION_OPS")
         extra_compile_args["nvcc"] = nvcc_flags
 
         flash_extensions = []
         xformers_pt_flash_attn = os.getenv("XFORMERS_PT_FLASH_ATTN")
 
-        # check if the current device supports flash_attention
-        nvcc_archs_flags = get_flash_attention_nvcc_archs_flags(cuda_version)
-        if not nvcc_archs_flags:
-            if xformers_pt_flash_attn == "1":
-                raise ValueError(
-                    "Current Torch Flash-Attention is not available on this device"
-                )
-        else:
-            # By default, we try to link to torch internal flash attention implementation
-            # and silently switch to local flash attention build if no compatibility
-            # If we force 'torch FA switch' then setup will fail when no compatibility
-            if (
-                xformers_pt_flash_attn is None or xformers_pt_flash_attn == "1"
-            ) and attn_compat_module.is_pt_flash_compatible(
-                force=xformers_pt_flash_attn == "1"
-            ):
-                flash_version = torch.nn.attention._get_flash_version() + "-pt"
-                use_pt_flash = True
+        # Skip flash-attention compilation by default unless explicitly enabled
+        # Set XFORMERS_BUILD_FLASH_ATTN=1 to enable compilation
+        build_flash_attn = os.getenv("XFORMERS_BUILD_FLASH_ATTN", "0") == "1"
+
+        if build_flash_attn:
+            # check if the current device supports flash_attention
+            nvcc_archs_flags = get_flash_attention_nvcc_archs_flags(cuda_version)
+            if not nvcc_archs_flags:
+                if xformers_pt_flash_attn == "1":
+                    raise ValueError(
+                        "Current Torch Flash-Attention is not available on this device"
+                    )
             else:
-                flash_extensions = get_flash_attention_extensions(
-                    cuda_version=cuda_version, extra_compile_args=extra_compile_args
-                )
-                if flash_extensions:
-                    flash_version = get_flash_version()
+                # By default, we try to link to torch internal flash attention implementation
+                # and silently switch to local flash attention build if no compatibility
+                # If we force 'torch FA switch' then setup will fail when no compatibility
+                if (
+                    xformers_pt_flash_attn is None or xformers_pt_flash_attn == "1"
+                ) and attn_compat_module.is_pt_flash_compatible(
+                    force=xformers_pt_flash_attn == "1"
+                ):
+                    flash_version = torch.nn.attention._get_flash_version() + "-pt"
+                    use_pt_flash = True
+                else:
+                    flash_extensions = get_flash_attention_extensions(
+                        cuda_version=cuda_version, extra_compile_args=extra_compile_args
+                    )
+                    if flash_extensions:
+                        flash_version = get_flash_version()
 
         ext_modules += flash_extensions
 
@@ -413,44 +545,44 @@ def get_extensions():
             "--ptxas-options=-O2",
             "--ptxas-options=-allow-expensive-optimizations=true",
         ]
-    elif torch.cuda.is_available() and torch.version.hip:
-        rename_cpp_cu(source_hip)
-        rocm_home = os.getenv("ROCM_PATH")
-        hip_version = get_hip_version(rocm_home)
+    # elif torch.cuda.is_available() and torch.version.hip:
+    #     rename_cpp_cu(source_hip)
+    #     rocm_home = os.getenv("ROCM_PATH")
+    #     hip_version = get_hip_version(rocm_home)
 
-        source_hip_cu = []
-        for ff in source_hip:
-            source_hip_cu += [ff.replace(".cpp", ".cu")]
+    #     source_hip_cu = []
+    #     for ff in source_hip:
+    #         source_hip_cu += [ff.replace(".cpp", ".cu")]
 
-        extension = CUDAExtension
-        sources += source_hip_cu
-        include_dirs += [
-            Path(this_dir) / "xformers" / "csrc" / "attention" / "hip_fmha"
-        ]
+    #     extension = CUDAExtension
+    #     sources += source_hip_cu
+    #     include_dirs += [
+    #         Path(this_dir) / "xformers" / "csrc" / "attention" / "hip_fmha"
+    #     ]
 
-        include_dirs += [
-            Path(this_dir) / "third_party" / "composable_kernel_tiled" / "include"
-        ]
+    #     include_dirs += [
+    #         Path(this_dir) / "third_party" / "composable_kernel_tiled" / "include"
+    #     ]
 
-        generator_flag = []
+    #     generator_flag = []
 
-        cc_flag = ["-DBUILD_PYTHON_PACKAGE"]
-        extra_compile_args = {
-            "cxx": ["-O3", "-std=c++17"] + generator_flag,
-            "nvcc": [
-                "-O3",
-                "-std=c++17",
-                f"--offload-arch={os.getenv('HIP_ARCHITECTURES', 'native')}",
-                "-U__CUDA_NO_HALF_OPERATORS__",
-                "-U__CUDA_NO_HALF_CONVERSIONS__",
-                "-DCK_FMHA_FWD_FAST_EXP2=1",
-                "-fgpu-flush-denormals-to-zero",
-                "-Werror",
-                "-Woverloaded-virtual",
-            ]
-            + generator_flag
-            + cc_flag,
-        }
+    #     cc_flag = ["-DBUILD_PYTHON_PACKAGE"]
+    #     extra_compile_args = {
+    #         "cxx": ["-O3", "-std=c++17"] + generator_flag,
+    #         "nvcc": [
+    #             "-O3",
+    #             "-std=c++17",
+    #             f"--offload-arch={os.getenv('HIP_ARCHITECTURES', 'native')}",
+    #             "-U__CUDA_NO_HALF_OPERATORS__",
+    #             "-U__CUDA_NO_HALF_CONVERSIONS__",
+    #             "-DCK_FMHA_FWD_FAST_EXP2=1",
+    #             "-fgpu-flush-denormals-to-zero",
+    #             "-Werror",
+    #             "-Woverloaded-virtual",
+    #         ]
+    #         + generator_flag
+    #         + cc_flag,
+    #     }
 
     ext_modules.append(
         extension(
@@ -488,7 +620,7 @@ def get_extensions():
 class clean(distutils.command.clean.clean):  # type: ignore
     def run(self):
         if os.path.exists(".gitignore"):
-            with open(".gitignore", "r") as f:
+            with open(".gitignore") as f:
                 ignores = f.read()
                 for wildcard in filter(None, ignores.split("\n")):
                     for filename in glob.glob(wildcard):
@@ -545,11 +677,14 @@ if __name__ == "__main__":
     # parameter in `setuptools.setup`, but this does not work when
     # developing in editable mode
     # See: https://github.com/pypa/pip/issues/3160 (closed, but not fixed)
-    symlink_package(
-        "xformers._flash_attn",
-        Path("third_party") / "flash-attention" / "flash_attn",
-        is_building_wheel,
-    )
+    # Only symlink if flash-attention exists
+    flash_attn_path = Path("third_party") / "flash-attention" / "flash_attn"
+    if flash_attn_path.exists():
+        symlink_package(
+            "xformers._flash_attn",
+            flash_attn_path,
+            is_building_wheel,
+        )
     extensions, extensions_metadata = get_extensions()
     setuptools.setup(
         name="xformers",

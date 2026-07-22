@@ -8,7 +8,7 @@ import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List
+
 
 THIS_PATH = Path(__file__).resolve()
 SOURCE_ROOT_DIR = THIS_PATH.parents[1]
@@ -44,9 +44,9 @@ class Build:
         NOTE: Variables set here won't be visible in `setup.py`
         UNLESS they are also specified in meta.yaml
         """
-        assert (
-            "BUILD_VERSION" in os.environ
-        ), "BUILD_VERSION must be set as env variable"
+        assert "BUILD_VERSION" in os.environ, (
+            "BUILD_VERSION must be set as env variable"
+        )
         tag = subprocess.check_output(
             ["git", "rev-parse", "--short", "HEAD"], text=True
         ).strip()
@@ -61,24 +61,24 @@ class Build:
             int(v) for v in self.pytorch_version.split(".")[:2]
         )
         if pytorch_version_tuple < (1, 13):
-            os.environ[
-                "CONDA_CUDA_CONSTRAINT_BUILD"
-            ] = f"cudatoolkit{cuda_constraint_build}"
-            os.environ[
-                "CONDA_CUDA_CONSTRAINT_RUN"
-            ] = f"cudatoolkit{self.cuda_dep_runtime}"
+            os.environ["CONDA_CUDA_CONSTRAINT_BUILD"] = (
+                f"cudatoolkit{cuda_constraint_build}"
+            )
+            os.environ["CONDA_CUDA_CONSTRAINT_RUN"] = (
+                f"cudatoolkit{self.cuda_dep_runtime}"
+            )
         else:
-            os.environ[
-                "CONDA_CUDA_CONSTRAINT_BUILD"
-            ] = f"pytorch-cuda{cuda_constraint_build}"
-            os.environ[
-                "CONDA_CUDA_CONSTRAINT_RUN"
-            ] = f"pytorch-cuda{self.cuda_dep_runtime}"
+            os.environ["CONDA_CUDA_CONSTRAINT_BUILD"] = (
+                f"pytorch-cuda{cuda_constraint_build}"
+            )
+            os.environ["CONDA_CUDA_CONSTRAINT_RUN"] = (
+                f"pytorch-cuda{self.cuda_dep_runtime}"
+            )
 
         if self.conda_always_copy:
             os.environ["CONDA_ALWAYS_COPY"] = "true"
 
-    def _get_build_args(self) -> List[str]:
+    def _get_build_args(self) -> list[str]:
         args = [
             "conda",
             "build",

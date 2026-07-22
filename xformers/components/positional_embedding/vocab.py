@@ -32,7 +32,7 @@ class VocabEmbedding(PositionEmbedding):
         vocab_size: int,
         dropout: float = 0.0,
         *args,
-        **kwargs
+        **kwargs,
     ):
         super().__init__()
 

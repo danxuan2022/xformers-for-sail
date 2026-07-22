@@ -6,7 +6,7 @@
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from xformers.components import NormalizationType, ResidualNormStyle
 from xformers.components.feedforward import FEEDFORWARD_REGISTRY, FeedforwardConfig
@@ -71,8 +71,8 @@ class xFormerBlockConfig:
     def __init__(
         self,
         dim_model: int,
-        feedforward_config: Dict[str, Any],
-        position_encoding_config: Optional[Dict[str, Any]],
+        feedforward_config: dict[str, Any],
+        position_encoding_config: Optional[dict[str, Any]],
         block_type: BlockType,
         residual_norm_style: ResidualNormStyle = ResidualNormStyle("post"),
         normalization: NormalizationType = NormalizationType.LayerNorm,
@@ -80,7 +80,6 @@ class xFormerBlockConfig:
         num_layers: int = 1,
         layer_position: Optional[LayerPosition] = None,
     ):
-
         self.dim_model = dim_model
         self.block_type = block_type
         self.residual_norm_style = residual_norm_style
@@ -116,22 +115,22 @@ class xFormerEncoderConfig(xFormerBlockConfig):
     The configuration structure for an encoder block
     """
 
-    multi_head_config: Dict[str, Any]
+    multi_head_config: dict[str, Any]
     use_triton: bool
-    simplicial_embeddings: Optional[Dict[str, Any]]
-    patch_embedding_config: Optional[Dict[str, Any]]
+    simplicial_embeddings: Optional[dict[str, Any]]
+    patch_embedding_config: Optional[dict[str, Any]]
 
     def __init__(
         self,
         dim_model: int,
-        feedforward_config: Dict[str, Any],
-        multi_head_config: Dict[str, Any],
-        position_encoding_config: Optional[Dict[str, Any]] = None,
+        feedforward_config: dict[str, Any],
+        multi_head_config: dict[str, Any],
+        position_encoding_config: Optional[dict[str, Any]] = None,
         residual_norm_style: str = "post",
         normalization: NormalizationType = NormalizationType.LayerNorm,
         use_triton: bool = True,
-        simplicial_embeddings: Optional[Dict[str, Any]] = None,
-        patch_embedding_config: Optional[Dict[str, Any]] = None,
+        simplicial_embeddings: Optional[dict[str, Any]] = None,
+        patch_embedding_config: Optional[dict[str, Any]] = None,
         **kwargs,
     ):
         # Convenience, fill in duplicated fields
@@ -184,22 +183,21 @@ class xFormerDecoderConfig(xFormerBlockConfig):
     on top of the settings defining all blocks.
     """
 
-    multi_head_config_masked: Dict[str, Any]  # prior to encoder output
-    multi_head_config_cross: Dict[str, Any]  # cross attention, takes encoder output
+    multi_head_config_masked: dict[str, Any]  # prior to encoder output
+    multi_head_config_cross: dict[str, Any]  # cross attention, takes encoder output
 
     def __init__(
         self,
         dim_model: int,
-        feedforward_config: Dict[str, Any],
-        multi_head_config_masked: Dict[str, Any],
-        multi_head_config_cross: Dict[str, Any],
-        position_encoding_config: Optional[Dict[str, Any]] = None,
+        feedforward_config: dict[str, Any],
+        multi_head_config_masked: dict[str, Any],
+        multi_head_config_cross: dict[str, Any],
+        position_encoding_config: Optional[dict[str, Any]] = None,
         residual_norm_style: str = "post",
         normalization: NormalizationType = NormalizationType.LayerNorm,
         use_triton: bool = True,
         **kwargs,
     ):
-
         # Convenience, fill in duplicated field
         try:
             if "dim_model" not in multi_head_config_masked.keys():

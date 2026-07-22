@@ -7,11 +7,12 @@
 import concurrent.futures
 import json
 import multiprocessing.connection
-from typing import Any, List, Optional, Union
+from typing import Any, Optional, Union
 
 import torch
 import torch.distributed as dist
 import torch.multiprocessing.reductions
+
 
 # We could just send tensors directly on mp.Connections, since PyTorch installs
 # the necessary reductions to make it work. However, in the receiving process,
@@ -55,14 +56,14 @@ _COUNTER = 0
 
 
 def _exchange_addresses(
-    listeners: List[multiprocessing.connection.Listener],
+    listeners: list[multiprocessing.connection.Listener],
     group: dist.ProcessGroup,
     device: torch.device,
-) -> List[List[str]]:
+) -> list[list[str]]:
     global _COUNTER
     rank = group.rank()
     world_size = group.size()
-    my_addresses: List[str] = []
+    my_addresses: list[str] = []
     for listener in listeners:
         addr = listener.address
         # The address could be a tuple if the listener weren't a UNIX socket
@@ -122,7 +123,7 @@ class IPCPipe:
 def init_ipc(
     group: dist.ProcessGroup,
     device: Union[torch.device, str] = "cuda",
-) -> List[Optional[IPCPipe]]:
+) -> list[Optional[IPCPipe]]:
     """
     Initializes pipes between processes of a `ProcessGroup`, that can be used
     to exchange `torch.Tensor` later

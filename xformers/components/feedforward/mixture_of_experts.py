@@ -18,15 +18,16 @@ from xformers.components.feedforward import (
     register_feedforward,
 )
 
+
 logger = logging.getLogger("xformers")
 
 
 _is_fairscale_available = True
 
 try:
-    import torch.distributed as dist
     from fairscale.nn import MOELayer, Top2Gate  # type: ignore
 
+    import torch.distributed as dist
     from xformers.components.feedforward import MLP
 
 except ImportError:
@@ -38,7 +39,6 @@ except ImportError:
 
 
 if _is_fairscale_available:
-
     # Credits: initially implemented in FairScale for sanity checking
     class RoundRobinGate(torch.nn.Module):
         def __init__(self, model_dim, num_experts):
@@ -100,9 +100,9 @@ if _is_fairscale_available:
             super().__init__()
 
             # Handle a possibly uninitialized process group
-            assert (
-                dist.is_initialized()
-            ), "Mixture of Experts require torch distributed to be initialized"
+            assert dist.is_initialized(), (
+                "Mixture of Experts require torch distributed to be initialized"
+            )
 
             if number_of_local_experts is not None:
                 assert number_of_experts >= number_of_local_experts
@@ -127,7 +127,6 @@ if _is_fairscale_available:
 
             # Programatically handle the experts
             if expert_constructor is None:
-
                 multiplier = (
                     hidden_layer_multiplier
                     if hidden_layer_multiplier is not None

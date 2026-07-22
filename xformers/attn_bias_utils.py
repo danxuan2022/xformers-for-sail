@@ -5,7 +5,7 @@
 
 import math
 import random
-from typing import List, Optional, Sequence, Tuple, Type
+from typing import Optional, Sequence
 
 import torch
 
@@ -39,7 +39,7 @@ def create_attn_bias(
     dtype,
     requires_grad: bool,
     fmt: str,
-    op: Optional[Type[AttentionOpBase]] = None,
+    op: Optional[type[AttentionOpBase]] = None,
     page_size: Optional[int] = None,
 ):
     if bias_type is None or isinstance(None, bias_type):
@@ -253,7 +253,7 @@ def _rand_seqlens(
     q_len: int,
     kv_len: int,
     max_q_minus_k: Optional[int],
-) -> Tuple[Sequence[int], Sequence[int]]:
+) -> tuple[Sequence[int], Sequence[int]]:
     """
     Generates lists of lengths of query blocks and corresponding key blocks.
     The total number of queries will be bs * q_len and the
@@ -274,8 +274,8 @@ def _rand_seqlens(
         assert kv_len >= q_len
     q_len *= bs
     kv_len *= bs
-    seqlens_q: List[int] = []
-    seqlens_k: List[int] = []
+    seqlens_q: list[int] = []
+    seqlens_k: list[int] = []
 
     step_q = [max(1, q_len // 10), max(2, q_len // 2)]
     step_k = [max(1, kv_len // 10), max(2, kv_len // 2)]
@@ -295,9 +295,9 @@ def _rand_seqlens(
             keys_left = kv_len - sum(seqlens_k, 0)
             queries_left = q_len - sum(seqlens_q, 0)
 
-            assert (
-                keys_left >= queries_left - max_q_minus_k
-            ), f"{keys_left=} {queries_left=} {max_q_minus_k=} {kv_len=} {q_len=} {seqlens_k=} {seqlens_q=}"
+            assert keys_left >= queries_left - max_q_minus_k, (
+                f"{keys_left=} {queries_left=} {max_q_minus_k=} {kv_len=} {q_len=} {seqlens_k=} {seqlens_q=}"
+            )
             # Limit num_queries from above: if num_queries > keys_left + max_q_minus_k,
             # condition num_queries <= num_keys + max_q_minus_k can't be satisfied even if we take
             # all the remaining keys
@@ -322,7 +322,7 @@ def _rand_seqlens(
 
 def _rand_maxed_partition(
     r: random.Random, total: int, n: int, mx: int, positive: bool = True
-) -> List[int]:
+) -> list[int]:
     # returns list of n nonnegative integers less than mx summing to total
     # NB: This is unfortunately biased towards evenly-split bins.
     # If `positive`, outputs are positive
@@ -340,7 +340,7 @@ def _rand_maxed_partition(
 
 def _rand_seqlens_padded_k(
     r: random.Random, bs: int, q_len: int, kv_len: int
-) -> Tuple[Sequence[int], Sequence[int]]:
+) -> tuple[Sequence[int], Sequence[int]]:
     # This is for BlockDiagonalCausalWithOffsetPaddedKeysMask.
     # we need q_seqlens and k_seqlens to be of len bsz.
     # For each "batch element" there must be more keys than queries

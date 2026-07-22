@@ -10,14 +10,14 @@ import math
 import os
 
 import pytorch_lightning as pl
+from pytorch_lightning import seed_everything, Trainer
+from pytorch_lightning.utilities import rank_zero_info
+from xformers.factory.model_factory import xFormer, xFormerConfig
+
 import torch
 import torch.nn as nn
-from pytorch_lightning import Trainer, seed_everything
-from pytorch_lightning.utilities import rank_zero_info
 from torch.nn import functional as F
 from torch.utils.data import DataLoader, Dataset, RandomSampler
-
-from xformers.factory.model_factory import xFormer, xFormerConfig
 
 
 class GPT(pl.LightningModule):
@@ -287,7 +287,7 @@ if __name__ == "__main__":
             "wget https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt"
         )
 
-    text = open("input.txt", "r").read()
+    text = open("input.txt").read()
     train_dataset = CharDataset(
         text, BLOCK
     )  # one line of poem is roughly 50 characters

@@ -16,29 +16,29 @@
 #include <cmath>
 #include <vector>
 
-#include "cutlass/bfloat16.h"
-#include "cutlass/fast_math.h"
-#include "cutlass/gemm/gemm.h"
-#include "cutlass/layout/matrix.h"
-#include "cutlass/layout/vector.h"
-#include "cutlass/matrix.h"
-#include "cutlass/numeric_types.h"
-#include "cutlass/tensor_ref.h"
+#include "cutlass2/bfloat16.h"
+#include "cutlass2/fast_math.h"
+#include "cutlass2/gemm/gemm.h"
+#include "cutlass2/layout/matrix.h"
+#include "cutlass2/layout/vector.h"
+#include "cutlass2/matrix.h"
+#include "cutlass2/numeric_types.h"
+#include "cutlass2/tensor_ref.h"
 
-#include "cutlass/epilogue/threadblock/default_epilogue_simt.h"
-#include "cutlass/epilogue/threadblock/default_epilogue_tensor_op.h"
-#include "cutlass/epilogue/threadblock/default_epilogue_volta_tensor_op.h"
-#include "cutlass/gemm/device/default_gemm_configuration.h"
-#include "cutlass/gemm/kernel/default_gemm.h"
-#include "cutlass/gemm/threadblock/default_mma.h"
-#include "cutlass/gemm/threadblock/default_mma_core_simt.h"
-#include "cutlass/gemm/threadblock/default_mma_core_sm70.h"
-#include "cutlass/gemm/threadblock/default_mma_core_sm75.h"
-#include "cutlass/gemm/threadblock/default_mma_core_sm80.h"
-#include "cutlass/gemm/threadblock/threadblock_swizzle.h"
-#include "cutlass/matrix_shape.h"
-#include "cutlass/platform/platform.h"
-#include "cutlass/transform/threadblock/predicated_tile_iterator.h"
+#include "cutlass2/epilogue/threadblock/default_epilogue_simt.h"
+#include "cutlass2/epilogue/threadblock/default_epilogue_tensor_op.h"
+#include "cutlass2/epilogue/threadblock/default_epilogue_volta_tensor_op.h"
+#include "cutlass2/gemm/device/default_gemm_configuration.h"
+#include "cutlass2/gemm/kernel/default_gemm.h"
+#include "cutlass2/gemm/threadblock/default_mma.h"
+#include "cutlass2/gemm/threadblock/default_mma_core_simt.h"
+#include "cutlass2/gemm/threadblock/default_mma_core_sm70.h"
+#include "cutlass2/gemm/threadblock/default_mma_core_sm75.h"
+#include "cutlass2/gemm/threadblock/default_mma_core_sm80.h"
+#include "cutlass2/gemm/threadblock/threadblock_swizzle.h"
+#include "cutlass2/matrix_shape.h"
+#include "cutlass2/platform/platform.h"
+#include "cutlass2/transform/threadblock/predicated_tile_iterator.h"
 #include "debug_utils.h"
 #include "epilogue/epilogue_pipelined.h"
 #include "epilogue/epilogue_rescale_output.h"
@@ -839,7 +839,7 @@ struct AttentionKernel {
             // attn_bias_pointer points to matrix of size (n_queries, n_keys)
             // for the relevant batch_id and head_id
             const_cast<scalar_t*>(
-                p.attn_bias_ptr + query_start * p.bias_strideM +
+                p.attn_bias_ptr + int64_t(query_start) * p.bias_strideM +
                 iter_key_start),
             {problem_size_0_m, problem_size_0_n},
             thread_id());
@@ -996,7 +996,7 @@ struct AttentionKernel {
           curandStatePhilox4_32_10_t curand_state = curand_state_init;
           skipahead(
               static_cast<unsigned long long>(
-                  (query_start + thread_i) * p.num_keys_absolute +
+                  int64_t(query_start + thread_i) * p.num_keys_absolute +
                   (iter_key_start + thread_start_j)),
               &curand_state);
           const float dropout_scale = 1.0 / (1.0 - p.dropout_prob);

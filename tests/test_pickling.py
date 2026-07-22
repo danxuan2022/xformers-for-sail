@@ -10,9 +10,10 @@ import pickle
 from copy import deepcopy
 
 import pytest
+from xformers.factory import xFormer, xFormerConfig
+
 from torch import nn
 
-from xformers.factory import xFormer, xFormerConfig
 
 test_config = [
     {

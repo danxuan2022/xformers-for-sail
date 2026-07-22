@@ -8,18 +8,19 @@
 # https://github.com/mlpen/Nystromformer
 
 from enum import Enum
-from typing import Dict, Union
+from typing import Union
 
 import pytorch_lightning as pl
+
 import torch
 import torch.nn as nn
-
 from xformers.components import build_attention
 from xformers.components.multi_head_dispatch import MultiHeadDispatchConfig
 from xformers.factory import xFormer, xFormerConfig, xFormerEncoderConfig
 from xformers.utils import generate_matching_config
 
-PLOutput = Dict[str, Union[float, torch.Tensor]]
+
+PLOutput = dict[str, Union[float, torch.Tensor]]
 
 
 class Pooling(str, Enum):
@@ -140,7 +141,7 @@ class ModelTrunk(pl.LightningModule):
         )
 
     def training_step(  # type: ignore
-        self, batch: Dict[str, torch.Tensor], batch_idx: int
+        self, batch: dict[str, torch.Tensor], batch_idx: int
     ) -> PLOutput:
         outputs = self(**batch)
         self.logger.log_metrics({f"train_{k}": v for k, v in outputs.items()})  # type: ignore
@@ -171,7 +172,7 @@ class ModelTrunk(pl.LightningModule):
 
         return [optimizer], [lr_scheduler]
 
-    def eval_step(self, batch: Dict[str, torch.Tensor], batch_idx: int) -> PLOutput:
+    def eval_step(self, batch: dict[str, torch.Tensor], batch_idx: int) -> PLOutput:
         outputs = self(**batch)
         return outputs
 
@@ -187,7 +188,7 @@ class ModelTrunk(pl.LightningModule):
         return logs
 
     def validation_step(  # type: ignore
-        self, batch: Dict[str, torch.Tensor], batch_idx: int
+        self, batch: dict[str, torch.Tensor], batch_idx: int
     ) -> PLOutput:
         outputs = self.eval_step(batch, batch_idx)
         self.logger.log_metrics({f"val_{k}": v for k, v in outputs.items()})  # type: ignore
@@ -198,7 +199,7 @@ class ModelTrunk(pl.LightningModule):
         self.eval_epoch_end(outputs, prefix="val")
 
     def test_step(  # type: ignore
-        self, batch: Dict[str, torch.Tensor], batch_idx: int
+        self, batch: dict[str, torch.Tensor], batch_idx: int
     ) -> PLOutput:
         return self.eval_step(batch, batch_idx)
 
@@ -220,7 +221,6 @@ class ModelForSC(ModelTrunk):
     def forward(  # type: ignore
         self, input_ids_0: torch.Tensor, mask_0: torch.Tensor, label: torch.Tensor
     ):
-
         if self.pooling_mode == Pooling.CLS:
             input_ids_0, mask_0 = append_cls(input_ids_0, mask_0, self.vocab_size)
 
@@ -260,7 +260,6 @@ class ModelForSCDual(ModelTrunk):
         mask_1: torch.Tensor,
         label: torch.Tensor,
     ):
-
         mask_0, mask_1 = mask_0.long(), mask_1.long()
 
         if self.pooling_mode == Pooling.CLS:

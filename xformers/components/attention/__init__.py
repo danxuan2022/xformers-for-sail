@@ -19,13 +19,14 @@ from ._sputnik_sparse import SparseCS
 from .attention_mask import AttentionMask
 from .base import Attention, AttentionConfig  # noqa
 
+
 logger = logging.getLogger("xformers")
 
 
 # CREDITS: Classy Vision registry mechanism
 
-ATTENTION_REGISTRY: Dict[str, Any] = {}
-ATTENTION_CLASS_NAMES: Set[str] = set()
+ATTENTION_REGISTRY: dict[str, Any] = {}
+ATTENTION_CLASS_NAMES: set[str] = set()
 
 # Arbitrary threshold for now,
 # in between dense and sparse matrix algorithms for the attention mechanism
@@ -33,7 +34,7 @@ _DENSITY_THRESHOLD = 0.30  # noqa # from the sputnik paper, vs.
 _USE_SPUTNIK = True
 
 
-def build_attention(config: Union[Dict[str, Any], AttentionConfig]):
+def build_attention(config: Union[dict[str, Any], AttentionConfig]):
     """Builds an attention from a config.
 
     This assumes a 'name' key in the config which is used to determine what
@@ -104,6 +105,7 @@ from .nystrom import NystromAttention  # noqa
 from .ortho import OrthoFormerAttention  # noqa
 from .random import RandomAttention  # noqa
 from .scaled_dot_product import ScaledDotProduct  # noqa
+
 
 __all__ = [
     "ScaledDotProduct",

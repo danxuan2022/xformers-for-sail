@@ -4,11 +4,8 @@
 # LICENSE file in the root directory of this source tree.
 
 import math
-from typing import Tuple
 
 import pytest
-import torch
-
 from xformers.components import (
     InputProjection,
     InputProjectionConfig,
@@ -21,6 +18,9 @@ from xformers.components.attention import (
     ATTENTION_REGISTRY,
     build_attention,
 )
+
+import torch
+
 
 DEVICES = (
     [torch.device("cpu")] if not torch.cuda.is_available() else [torch.device("cuda")]
@@ -273,7 +273,6 @@ def test_different_seqlen(
 @pytest.mark.parametrize("same_sizes", [False, True])
 @pytest.mark.parametrize("same_settings", [False, True])
 def test_inproj(proj_bias: bool, same_sizes: bool, same_settings: bool):
-
     test_config = {
         "name": "scaled_dot_product",
         "dropout": 0.1,
@@ -346,7 +345,6 @@ def test_different_kq_dimensions(
     heads: int,
     device: torch.device,
 ):
-
     multi_head = _get_multihead(attention_name, 0.0, 0.0, False, heads, device)
 
     if multi_head.attention.requires_same_k_q_dimensions:
@@ -380,7 +378,7 @@ def test_broadcast_batch_dimension(
     attention_name: str,
     heads: int,
     device: torch.device,
-    batch_sizes: Tuple[int, int, int],
+    batch_sizes: tuple[int, int, int],
 ):
     Q_BATCH, K_BATCH, V_BATCH = batch_sizes
     multi_head = _get_multihead(attention_name, 0.0, 0.0, False, heads, device)

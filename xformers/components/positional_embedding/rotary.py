@@ -7,7 +7,6 @@
 # CREDITS: This implementation is inspired by GPT-NeoX https://github.com/EleutherAI/gpt-neox
 # NOTE: Almost the same right now, moving parts to Triton is the next step
 
-from typing import Tuple
 
 import torch
 
@@ -80,7 +79,7 @@ class RotaryEmbedding(torch.nn.Module):
 
     def forward(
         self, q: torch.Tensor, k: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         self._cos_cached, self._sin_cached = self._update_cos_sin_tables(
             k, seq_dimension=-2
         )

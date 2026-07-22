@@ -4,14 +4,13 @@
 # LICENSE file in the root directory of this source tree.
 
 
-from typing import Tuple
+from utils import benchmark_main_helper2, DTYPE2STR, product_dict
 
 import torch
 import torch.nn.functional as F
-from torch import nn
-from utils import DTYPE2STR, benchmark_main_helper2, product_dict
-
 import xformers.ops as xops
+from torch import nn
+
 
 min_run_time = 0.5
 device = torch.device("cuda")
@@ -44,7 +43,7 @@ class Mlp(nn.Module):
     LINEAR_CLS = nn.Linear
 
     def __init__(
-        self, B_in_hidden_out_ft: Tuple[int, int, int, int], dtype, bias: bool, bw: bool
+        self, B_in_hidden_out_ft: tuple[int, int, int, int], dtype, bias: bool, bw: bool
     ) -> None:
         B, in_ft, hid_ft, out_ft = B_in_hidden_out_ft
         super().__init__()
@@ -114,7 +113,7 @@ class MlpW24(Mlp):
 
 class MicrobenchmarkBase:
     def __init__(
-        self, B_in_hidden_out_ft: Tuple[int, int, int, int], dtype, bias: bool, bw: bool
+        self, B_in_hidden_out_ft: tuple[int, int, int, int], dtype, bias: bool, bw: bool
     ) -> None:
         B, in_ft, hid_ft, out_ft = B_in_hidden_out_ft
         super().__init__()

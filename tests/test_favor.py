@@ -6,8 +6,6 @@
 import math
 
 import pytest
-import torch
-
 from xformers.components.attention import FavorAttention, ScaledDotProduct
 from xformers.components.attention.feature_maps import (
     FeatureMapType,
@@ -16,6 +14,9 @@ from xformers.components.attention.feature_maps import (
     SMOrf,
     SMReg,
 )
+
+import torch
+
 
 _device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 

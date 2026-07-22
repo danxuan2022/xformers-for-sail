@@ -4,7 +4,7 @@
 # LICENSE file in the root directory of this source tree.
 
 
-from typing import Callable, List, Optional, Tuple
+from typing import Callable, Optional
 
 import torch
 
@@ -27,10 +27,10 @@ from .tiled_matmul import tiled_matmul_fwd
 @make_pytorch_cuda_operator
 def sequence_parallel_leading_matmul_fwd(
     scattered_input: torch.Tensor,
-    weights: List[torch.Tensor],
+    weights: list[torch.Tensor],
     fuse: bool,
     process_group: torch.distributed.ProcessGroup,
-) -> List[torch.Tensor]:
+) -> list[torch.Tensor]:
     if fuse:
         gathered_outputs = fused_allgather_and_linear(
             scattered_input, [w.t() for w in weights], group=process_group
@@ -49,11 +49,11 @@ def sequence_parallel_leading_matmul_fwd(
 @make_pytorch_cuda_operator
 def sequence_parallel_leading_matmul_bwd(
     scattered_input: torch.Tensor,
-    weights: List[torch.Tensor],
-    grad_gathered_outputs: List[torch.Tensor],
+    weights: list[torch.Tensor],
+    grad_gathered_outputs: list[torch.Tensor],
     fuse: bool,
     process_group: torch.distributed.ProcessGroup,
-) -> Tuple[torch.Tensor, List[torch.Tensor]]:
+) -> tuple[torch.Tensor, list[torch.Tensor]]:
     mp_size = process_group.size()
 
     if fuse:
@@ -65,7 +65,7 @@ def sequence_parallel_leading_matmul_bwd(
         ]
 
         def my_si_matmul(
-            grad_gathered_inputs: List[torch.Tensor],
+            grad_gathered_inputs: list[torch.Tensor],
             dst_rank: int,
             stream_factory: Callable[[], torch.cuda.Stream],
         ) -> None:
@@ -89,7 +89,7 @@ def sequence_parallel_leading_matmul_bwd(
         events = [torch.cuda.Event() for _ in weights]
 
         def my_w_matmul(
-            gathered_inputs_shard: List[torch.Tensor],
+            gathered_inputs_shard: list[torch.Tensor],
             src_rank: int,
             stream_factory: Callable[[], torch.cuda.Stream],
         ) -> None:
@@ -142,7 +142,7 @@ class _SequenceParallelLeadingMatmul(torch.autograd.Function):
         process_group: torch.distributed.ProcessGroup,
         scattered_input: torch.Tensor,
         *weights: torch.Tensor,
-    ) -> Tuple[torch.Tensor, ...]:
+    ) -> tuple[torch.Tensor, ...]:
         ctx.save_for_backward(scattered_input, *weights)
         ctx.fuse = fuse
         ctx.process_group = process_group
@@ -154,9 +154,12 @@ class _SequenceParallelLeadingMatmul(torch.autograd.Function):
     @staticmethod
     def backward(  # type: ignore[override]
         ctx, *grad_gathered_outputs: torch.Tensor
-    ) -> Tuple[Optional[torch.Tensor], ...]:
+    ) -> tuple[Optional[torch.Tensor], ...]:
         scattered_input, *weights = ctx.saved_tensors
-        (grad_scattered_input, grad_weights,) = sequence_parallel_leading_matmul_bwd(
+        (
+            grad_scattered_input,
+            grad_weights,
+        ) = sequence_parallel_leading_matmul_bwd(
             scattered_input,
             list(weights),
             list(grad_gathered_outputs),
@@ -168,11 +171,11 @@ class _SequenceParallelLeadingMatmul(torch.autograd.Function):
 
 def sequence_parallel_leading_matmul(
     x: torch.Tensor,
-    ws: List[torch.Tensor],
+    ws: list[torch.Tensor],
     *,
     fuse: bool,
     process_group: torch.distributed.ProcessGroup,
-) -> List[torch.Tensor]:
+) -> list[torch.Tensor]:
     os = _SequenceParallelLeadingMatmul.apply(
         fuse, process_group, x.flatten(0, -2), *ws
     )
@@ -205,7 +208,7 @@ def sequence_parallel_trailing_matmul_bwd(
     grad_scattered_output: torch.Tensor,
     fuse: bool,
     process_group: torch.distributed.ProcessGroup,
-) -> Tuple[torch.Tensor, torch.Tensor]:
+) -> tuple[torch.Tensor, torch.Tensor]:
     mp_size = process_group.size()
 
     if fuse:
@@ -216,7 +219,7 @@ def sequence_parallel_trailing_matmul_bwd(
         grad_gathered_inputs = grad_gathered_input.tensor_split(mp_size, dim=0)
 
         def my_gi_and_w_matmul(
-            grad_gathered_outputs_shard: List[torch.Tensor],
+            grad_gathered_outputs_shard: list[torch.Tensor],
             src_rank: int,
             stream_factory: Callable[[], torch.cuda.Stream],
         ) -> None:
@@ -263,9 +266,12 @@ class _SequenceParallelTrailingMatmul(torch.autograd.Function):
     @staticmethod
     def backward(  # type: ignore[override]
         ctx, grad_scattered_output: torch.Tensor
-    ) -> Tuple[Optional[torch.Tensor], ...]:
+    ) -> tuple[Optional[torch.Tensor], ...]:
         gathered_input, weight = ctx.saved_tensors
-        (grad_gathered_input, grad_weight,) = sequence_parallel_trailing_matmul_bwd(
+        (
+            grad_gathered_input,
+            grad_weight,
+        ) = sequence_parallel_trailing_matmul_bwd(
             gathered_input,
             weight,
             grad_scattered_output,

@@ -6,15 +6,15 @@
 
 import os
 import random
-from typing import Tuple
 
 import pytest
-import torch
-
 from xformers import _is_triton_available
 from xformers.ops import fused_allgather_and_linear, fused_linear_and_reducescatter
 
+import torch
+
 from .multiprocessing_utils import launch_subprocesses
+
 
 compute_capability = (0, 0)
 if torch.cuda.is_available():
@@ -42,7 +42,7 @@ def inner_sequence_parallel_fused(
     seed: int,
     kind: str,
     step: str,
-    dims: Tuple[int, ...],
+    dims: tuple[int, ...],
     dtype: torch.dtype,
 ):
     my_rank = torch.distributed.get_rank()
@@ -152,7 +152,7 @@ def inner_sequence_parallel_fused(
 def test_sequence_parallel_fused(
     kind: str,
     step: str,
-    dims: Tuple[int, ...],
+    dims: tuple[int, ...],
     dtype: torch.dtype,
 ):
     world_size = 1 if kind == "singleton" else 2

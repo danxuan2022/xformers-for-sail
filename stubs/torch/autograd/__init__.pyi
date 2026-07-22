@@ -3,11 +3,11 @@
 # This source code is licensed under the BSD license found in the
 # LICENSE file in the root directory of this source tree.
 
-from typing import Any, Optional, Sequence, Union
+from typing import Any, Optional, Sequence, TypeAlias, Union
 
 import torch
 
-_TensorOrTensors = Union[torch.Tensor, Sequence[torch.Tensor]]
+_TensorOrTensors: TypeAlias = Union[torch.Tensor, Sequence[torch.Tensor]]
 
 class Function:
     @classmethod

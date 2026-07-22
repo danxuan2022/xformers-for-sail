@@ -6,12 +6,13 @@ from contextlib import nullcontext
 from typing import Optional
 
 import pytest
+from xformers.ops import RMSNorm
+
 import torch
 from torch import nn
 
-from xformers.ops import RMSNorm
-
 from .utils import assert_allclose
+
 
 compute_capability = (0, 0)
 if torch.cuda.is_available():

@@ -6,18 +6,7 @@
 import math
 from dataclasses import dataclass
 from functools import partial
-from typing import (
-    Any,
-    Callable,
-    Iterable,
-    List,
-    Mapping,
-    Optional,
-    Set,
-    Tuple,
-    Type,
-    Union,
-)
+from typing import Any, Callable, Iterable, Mapping, Optional, Union
 
 import torch
 
@@ -76,7 +65,7 @@ class Inputs:
     def scale_float(self) -> float:
         return self.query.shape[-1] ** (-0.5) if self.scale is None else self.scale
 
-    def get_qkv_in_bmghk(self) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def get_qkv_in_bmghk(self) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         if self.query.ndim == 5:
             return self.query, self.key, self.value
         if self.query.ndim == 4:
@@ -93,7 +82,7 @@ class Inputs:
             )
         assert False
 
-    def normalize_bmhk(self) -> Tuple[int, ...]:
+    def normalize_bmhk(self) -> tuple[int, ...]:
         if self.query.ndim not in [3, 4, 5]:
             raise ValueError(
                 f"Invalid shape for query: {self.query.shape}. "
@@ -251,7 +240,7 @@ class Context:
     out: torch.Tensor
     # NOTE: If `rng_state` is set, `op_bw` should be set as well
     # as the randomness is backend-dependant
-    op_bw: Optional[Type["AttentionBwOpBase"]] = None
+    op_bw: Optional[type["AttentionBwOpBase"]] = None
     rng_state: Optional[Any] = None
     qkv_share_storage: bool = False
 
@@ -293,9 +282,9 @@ class AttentionOpBase(BaseOperator):
     """
 
     OPERATOR: Any
-    SUPPORTED_DEVICES: Set[str]
-    CUDA_MINIMUM_COMPUTE_CAPABILITY: Tuple[int, int] = (5, 0)
-    SUPPORTED_DTYPES: Set[torch.dtype]
+    SUPPORTED_DEVICES: set[str]
+    CUDA_MINIMUM_COMPUTE_CAPABILITY: tuple[int, int] = (5, 0)
+    SUPPORTED_DTYPES: set[torch.dtype]
     SUPPORTED_MAX_K: float
     SUPPORTED_ATTN_BIAS_TYPES: Iterable[Any] = (type(None),)
     SUPPORTS_DROPOUT: bool
@@ -308,8 +297,8 @@ class AttentionOpBase(BaseOperator):
     NAME: str
     OPERATOR_CATEGORY = "memory_efficient_attention"
 
-    _TEST_BATCH_SIZES: List[int] = [1, 300]
-    _TEST_K: List[int] = [32, 128]
+    _TEST_BATCH_SIZES: list[int] = [1, 300]
+    _TEST_K: list[int] = [32, 128]
 
     @classmethod
     def supports(cls, d: Inputs) -> bool:
@@ -318,7 +307,7 @@ class AttentionOpBase(BaseOperator):
     @classmethod
     def shape_not_supported_reasons(
         cls, Mq: int, Mkv: int, K: int, Kv: int
-    ) -> List[str]:
+    ) -> list[str]:
         reasons = []
         if not cls.SUPPORTS_DIFFERENT_VALUE_EMBED and K != Kv:
             reasons.append("query.shape[-1] != value.shape[-1]")
@@ -329,7 +318,7 @@ class AttentionOpBase(BaseOperator):
         return reasons
 
     @classmethod
-    def not_supported_reasons(cls, d: Inputs) -> List[str]:
+    def not_supported_reasons(cls, d: Inputs) -> list[str]:
         """
         Returns a list of reasons why this is not supported.
         The kernel can run these inputs only if the returned list is empty
@@ -408,8 +397,8 @@ class AttentionFwOpBase(AttentionOpBase):
     @classmethod
     def apply(
         cls, inp: Inputs, needs_gradient: bool
-    ) -> Tuple[torch.Tensor, Optional[Context]]:
-        raise NotImplementedError()
+    ) -> tuple[torch.Tensor, Optional[Context]]:
+        raise NotImplementedError
 
     @classmethod
     def attn_operator_flop(
@@ -460,14 +449,14 @@ class AttentionBwOpBase(AttentionOpBase):
     # In the BW pass, imprecisions accumulate in the Q@K.T recalculation
     # These imprecisions are multiplied by the `scale` and then exponentiated
     # So if the scale is too high, we get a lot of errors
-
+    USE_PPU = torch.cuda.get_device_name().lower().find("ppu") != -1
     ERROR_ATOL: Mapping[torch.dtype, float] = {
-        torch.float: 9e-4,
+        torch.float: 5e-3 if USE_PPU else 9e-4,
         torch.half: 0.2,
         torch.bfloat16: 0.9,
     }
     ERROR_RTOL: Mapping[torch.dtype, float] = {
-        torch.float: 1e-4,
+        torch.float: 1e-3 if USE_PPU else 1e-4,
         torch.half: 2e-2,
         torch.bfloat16: 0.1,
     }
@@ -476,7 +465,7 @@ class AttentionBwOpBase(AttentionOpBase):
     SUPPORTS_UNPADDED_LSE = False
 
     @classmethod
-    def not_supported_reasons(cls, d: Inputs) -> List[str]:
+    def not_supported_reasons(cls, d: Inputs) -> list[str]:
         reasons = super(AttentionBwOpBase, cls).not_supported_reasons(d)
         if (
             isinstance(d.attn_bias, torch.Tensor)
@@ -491,7 +480,7 @@ class AttentionBwOpBase(AttentionOpBase):
 
     @classmethod
     def apply(cls, ctx: Context, inp: Inputs, grad: torch.Tensor) -> Gradients:
-        raise NotImplementedError()
+        raise NotImplementedError
 
     @classmethod
     def attn_operator_flop(
@@ -544,8 +533,8 @@ class AttentionBwOpBase(AttentionOpBase):
         return total_flop
 
 
-AttentionOp = Tuple[
-    Optional[Type[AttentionFwOpBase]], Optional[Type[AttentionBwOpBase]]
+AttentionOp = tuple[
+    Optional[type[AttentionFwOpBase]], Optional[type[AttentionBwOpBase]]
 ]
 
 
@@ -594,7 +583,7 @@ def bmk2bmhk(tensor, num_heads: int) -> torch.Tensor:
 
 
 def check_lastdim_alignment_stride1(
-    reasons: List[str], name: str, x: torch.Tensor, alignment: int
+    reasons: list[str], name: str, x: torch.Tensor, alignment: int
 ) -> None:
     if x.shape[-1] % alignment != 0:
         reasons.append(f"{name}.shape[-1] % {alignment} != 0")

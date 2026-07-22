@@ -189,7 +189,7 @@ class FixedSparsityConfig(SparsityConfig):
             raise ValueError(
                 f"""Number of layout versions (num_different_global_patterns), {num_different_global_patterns},
                 cannot be larger than number of local window blocks divided by number of global blocks,
-                {num_local_blocks} / {num_global_blocks} = {num_local_blocks//num_global_blocks}!"""
+                {num_local_blocks} / {num_global_blocks} = {num_local_blocks // num_global_blocks}!"""
             )
         self.num_different_global_patterns = num_different_global_patterns
 
@@ -241,7 +241,6 @@ class FixedSparsityConfig(SparsityConfig):
         # set all global blocks except the last one if (in last local window)
         end = num_blocks - (num_blocks % self.num_local_blocks)
         for i in range(first_global_block_idx, end, self.num_local_blocks):
-
             # vertical global attention
             first_row = 0 if self.attention == "bidirectional" else i
             # (((i // self.num_local_blocks) + 1) * self.num_local_blocks)

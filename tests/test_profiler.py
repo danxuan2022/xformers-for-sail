@@ -5,19 +5,20 @@
 
 import math
 from contextlib import contextmanager
-from typing import Union, cast
+from typing import cast, Union
 
 import pytest
-import torch
-import torch.nn as nn
-from torch.nn.attention import SDPBackend, sdpa_kernel
-from torch.utils._python_dispatch import TorchDispatchMode, _get_current_dispatch_mode
-
 import xformers.ops as xops
 import xformers.ops.fmha as fmha
 import xformers.profiler
 from xformers.profiler import profile_analyzer
-from xformers.profiler.slow_ops_profiler import GemmOpComputeFlops, flop_mapping
+from xformers.profiler.slow_ops_profiler import flop_mapping, GemmOpComputeFlops
+
+import torch
+import torch.nn as nn
+from torch.nn.attention import sdpa_kernel, SDPBackend
+from torch.utils._python_dispatch import _get_current_dispatch_mode, TorchDispatchMode
+
 
 cuda_only = pytest.mark.skipif(not torch.cuda.is_available(), reason="requires CUDA")
 
@@ -199,9 +200,9 @@ def assert_flops(
             total_flops += sum(results.operations_per_dtype_bw.values())
         if match != -1:
             # Some tolerance
-            assert (
-                total_flops * 0.99 < match < total_flops * 1.01
-            ), f"{error_msg}: {total_flops} flops, expected {match}"
+            assert total_flops * 0.99 < match < total_flops * 1.01, (
+                f"{error_msg}: {total_flops} flops, expected {match}"
+            )
         assert total_flops >= at_least, error_msg
         assert total_flops <= at_most, error_msg
 

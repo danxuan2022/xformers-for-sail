@@ -5,6 +5,7 @@
 import triton  # type: ignore
 import triton.language as tl  # type: ignore
 
+
 try:
     from triton.language.extra.cuda.libdevice import pow
 except ImportError:

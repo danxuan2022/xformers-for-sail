@@ -3,13 +3,22 @@
 # This source code is licensed under the BSD license found in the
 # LICENSE file in the root directory of this source tree.
 
-from typing import Any, List, Optional, Sequence, Tuple, Type, Union, cast
+from typing import Any, cast, List, Optional, Sequence, Tuple, Type, Union
 
 import torch
 
-from . import attn_bias
-from . import attn_bias as _attn_bias
-from . import ck, ck_decoder, ck_splitk, cutlass, decoder, flash, small_k, triton_splitk
+from . import (
+    attn_bias,
+    attn_bias as _attn_bias,
+    ck,
+    ck_decoder,
+    ck_splitk,
+    cutlass,
+    decoder,
+    flash,
+    small_k,
+    triton_splitk,
+)
 from .attn_bias import AttentionBias, BlockDiagonalMask, LowerTriangularMask
 from .common import (
     AttentionBwOpBase,
@@ -17,12 +26,13 @@ from .common import (
     AttentionOp,
     AttentionOpBase,
     AttentionOpDispatch,
+    bmk2bmhk,
     Context,
     Gradients,
     Inputs,
-    bmk2bmhk,
 )
 from .dispatch import _dispatch_bw, _dispatch_fw, _ensure_op_supports_or_raise
+
 
 MemoryEfficientAttentionCutlassOp = (cutlass.FwOp, cutlass.BwOp)
 MemoryEfficientAttentionCutlassFwdFlashBwOp = (cutlass.FwOp, flash.BwOp)
@@ -295,7 +305,7 @@ def memory_efficient_attention_forward(
     p: float = 0.0,
     scale: Optional[float] = None,
     *,
-    op: Optional[Type[AttentionFwOpBase]] = None,
+    op: Optional[type[AttentionFwOpBase]] = None,
     output_dtype: Optional[torch.dtype] = None,
 ) -> torch.Tensor:
     """
@@ -323,9 +333,9 @@ def memory_efficient_attention_forward_requires_grad(
     p: float = 0.0,
     scale: Optional[float] = None,
     *,
-    op: Optional[Type[AttentionFwOpBase]] = None,
+    op: Optional[type[AttentionFwOpBase]] = None,
     output_dtype: Optional[torch.dtype] = None,
-) -> Tuple[torch.Tensor, torch.Tensor]:
+) -> tuple[torch.Tensor, torch.Tensor]:
     """
     Returns a tuple (output, lse), where `lse` can be used to compute the backward pass later.
     See :attr:`xformers.ops.memory_efficient_attention` for an explanation of the arguments
@@ -362,8 +372,8 @@ def memory_efficient_attention_backward(
     p: float = 0.0,
     scale: Optional[float] = None,
     *,
-    op: Optional[Type[AttentionBwOpBase]] = None,
-) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    op: Optional[type[AttentionBwOpBase]] = None,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """
     Computes the gradient of the attention.
     Returns a tuple (dq, dk, dv)
@@ -406,7 +416,7 @@ def _memory_efficient_attention(
 
 
 def _memory_efficient_attention_forward(
-    inp: Inputs, op: Optional[Type[AttentionFwOpBase]]
+    inp: Inputs, op: Optional[type[AttentionFwOpBase]]
 ) -> torch.Tensor:
     inp.validate_inputs()
     output_shape = inp.normalize_bmhk()
@@ -420,8 +430,8 @@ def _memory_efficient_attention_forward(
 
 
 def _memory_efficient_attention_forward_requires_grad(
-    inp: Inputs, op: Optional[Type[AttentionFwOpBase]]
-) -> Tuple[torch.Tensor, Context]:
+    inp: Inputs, op: Optional[type[AttentionFwOpBase]]
+) -> tuple[torch.Tensor, Context]:
     inp.validate_inputs()
     output_shape = inp.normalize_bmhk()
     if op is None:
@@ -480,7 +490,7 @@ def _memory_efficient_attention_backward(
     ctx: Context,
     inp: Inputs,
     grad: torch.Tensor,
-    op: Optional[Type[AttentionBwOpBase]],
+    op: Optional[type[AttentionBwOpBase]],
     *,
     _skip_op_checks: bool = False,
 ) -> Gradients:
@@ -534,9 +544,9 @@ def memory_efficient_attention_partial(
     p: float = 0.0,
     scale: Optional[float] = None,
     *,
-    op: Optional[Union[AttentionOp, Type[AttentionFwOpBase]]] = None,
+    op: Optional[Union[AttentionOp, type[AttentionFwOpBase]]] = None,
     output_dtype: Optional[torch.dtype] = None,
-) -> Tuple[torch.Tensor, torch.Tensor]:
+) -> tuple[torch.Tensor, torch.Tensor]:
     """
     Returns a tuple (output, lse), where `output` is the attention in the style of
     memory_efficient_attention, and  `lse` is extra data, a log-sum-exp.
@@ -550,7 +560,7 @@ def memory_efficient_attention_partial(
     """
     if p != 0.0:
         raise NotImplementedError("dropout is not supported.")
-    fwop: Optional[Type[AttentionFwOpBase]] = op[0] if isinstance(op, tuple) else op
+    fwop: Optional[type[AttentionFwOpBase]] = op[0] if isinstance(op, tuple) else op
     if not (
         isinstance(
             attn_bias,
@@ -621,7 +631,7 @@ def merge_attentions(
     lse_split: Union[torch.Tensor, Sequence[torch.Tensor]],
     write_lse: bool = True,
     output_dtype: Optional[torch.dtype] = None,
-) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
+) -> tuple[torch.Tensor, Optional[torch.Tensor]]:
     """
     Combine attention output computed on different parts of K/V for the same
     query to get attention on the whole K/V. See https://arxiv.org/abs/2402.05099
@@ -768,7 +778,9 @@ def merge_attentions(
     if concat_path:
         triton_splitk.merge_attentions(attn_out, lse_out, attn_split, lse_split)  # type: ignore
     else:
-        attn_out, lse_out = _MergeAttentions.apply(attn_out, lse_out, *attn_split, *lse_split)  # type: ignore
+        attn_out, lse_out = _MergeAttentions.apply(
+            attn_out, lse_out, *attn_split, *lse_split
+        )  # type: ignore
 
     if is_bmhk:
         attn_out = attn_out[:, :, 0]
@@ -783,7 +795,7 @@ class _MergeAttentions(torch.autograd.Function):
     # type: ignore
     def forward(
         ctx, attn_out: torch.Tensor, lse_out: torch.Tensor, *inputs: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         num_chunks = len(inputs) // 2
         attn_split, lse_split = inputs[:num_chunks], inputs[num_chunks:]
 
@@ -800,7 +812,7 @@ class _MergeAttentions(torch.autograd.Function):
     # type: ignore
     def backward(
         ctx, grad_attn: torch.Tensor, grad_lse: torch.Tensor
-    ) -> Tuple[Optional[torch.Tensor], ...]:
+    ) -> tuple[Optional[torch.Tensor], ...]:
         out, lse, *inputs = ctx.saved_tensors
         num_chunks = len(inputs) // 2
         attn_split, lse_split = inputs[:num_chunks], inputs[num_chunks:]
@@ -816,14 +828,14 @@ class _MergeAttentions(torch.autograd.Function):
         return tuple(ret)
 
 
-ALL_FW_OPS: List[Type[AttentionFwOpBase]] = [
+ALL_FW_OPS: list[type[AttentionFwOpBase]] = [
     cutlass.FwOp if torch.version.cuda else ck.FwOp,
     flash.FwOp,
     small_k.FwOp,
     triton_splitk.FwOp,
 ]
 
-ALL_BW_OPS: List[Type[AttentionBwOpBase]] = [
+ALL_BW_OPS: list[type[AttentionBwOpBase]] = [
     cutlass.BwOp if torch.version.cuda else ck.BwOp,
     flash.BwOp,
     small_k.BwOp,

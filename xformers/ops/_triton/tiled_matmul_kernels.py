@@ -5,12 +5,12 @@
 
 
 import itertools
-from typing import List, Tuple
 
-import torch
 import triton
 import triton.language as tl
 from triton.ops.matmul_perf_model import early_config_prune, estimate_matmul_time
+
+import torch
 
 
 def init_to_zero(*names):
@@ -42,7 +42,7 @@ def gen_config(
         },
         num_stages=stages,
         num_warps=warps,
-        pre_hook=init_to_zero(*[f"C{i+1}{j+1}" for i in range(3) for j in range(3)])
+        pre_hook=init_to_zero(*[f"C{i + 1}{j + 1}" for i in range(3) for j in range(3)])
         if split_k > 1
         else init_to_zero(),
     )
@@ -352,8 +352,8 @@ def _check_row_or_column(row_or_col_type, row_or_col_idx, tensor_name, dim_name,
 
 
 def _get_strides(
-    ts: List[List[torch.Tensor]], tensor_name, dim_0_name, dim_1_name
-) -> Tuple[List[int], List[int]]:
+    ts: list[list[torch.Tensor]], tensor_name, dim_0_name, dim_1_name
+) -> tuple[list[int], list[int]]:
     strides_0 = [
         _check_row_or_column(
             "column", idx, tensor_name, dim_0_name, [y.stride(0) for y in x]
@@ -375,12 +375,12 @@ def _get_strides(
 
 
 def _launch_triton_matmul(
-    a: List[List[torch.Tensor]],
-    b: List[List[torch.Tensor]],
-    c: List[List[torch.Tensor]],
-    ms: List[int],
-    ns: List[int],
-    ks: List[int],
+    a: list[list[torch.Tensor]],
+    b: list[list[torch.Tensor]],
+    c: list[list[torch.Tensor]],
+    ms: list[int],
+    ns: list[int],
+    ks: list[int],
 ) -> None:
     strides_am, strides_ak = _get_strides(a, "first operand", "m", "k")
     strides_bk, strides_bn = _get_strides(b, "second operand", "k", "n")

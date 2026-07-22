@@ -3,7 +3,7 @@
 # This source code is licensed under the BSD license found in the
 # LICENSE file in the root directory of this source tree.
 
-from typing import List, Optional, Sequence, Tuple, Union
+from typing import Optional, Sequence, Union
 
 import torch
 
@@ -12,7 +12,7 @@ from .common import _get_storage_base
 
 def get_stack_strides(
     tensors: Sequence[torch.Tensor], dim: int
-) -> Optional[Tuple[int, ...]]:
+) -> Optional[tuple[int, ...]]:
     """
     If the tensors are already stacked on dimension :code:`dim`, \
         returns the strides of the stacked tensors. \
@@ -53,7 +53,7 @@ def get_stack_strides(
 
 
 def _stack_or_none_fw(
-    tensors: Union[Tuple[torch.Tensor, ...], List[torch.Tensor]],
+    tensors: Union[tuple[torch.Tensor, ...], list[torch.Tensor]],
     dim: int,
 ) -> Optional[torch.Tensor]:
     strides = get_stack_strides(tensors, dim)
@@ -65,7 +65,7 @@ def _stack_or_none_fw(
 
 
 def _stack_fw(
-    tensors: Union[Tuple[torch.Tensor, ...], List[torch.Tensor]],
+    tensors: Union[tuple[torch.Tensor, ...], list[torch.Tensor]],
     dim: int,
 ) -> torch.Tensor:
     out = _stack_or_none_fw(tensors, dim)
@@ -108,7 +108,7 @@ class _StackOrNone(torch.autograd.Function):
         return (None, *grad.unbind(dim=ctx.dim))
 
 
-def unbind(x: torch.Tensor, dim: int) -> Tuple[torch.Tensor, ...]:
+def unbind(x: torch.Tensor, dim: int) -> tuple[torch.Tensor, ...]:
     """
     Does exactly the same as :attr:`torch.unbind` for the forward.
     In backward, avoids a :attr:`torch.cat` if the gradients

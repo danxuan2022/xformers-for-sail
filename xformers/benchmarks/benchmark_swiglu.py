@@ -10,10 +10,11 @@ from functools import partial
 from typing import Any
 
 import torch
-from torch.utils import benchmark
 
 import xformers.ops.swiglu_op as xsw
+from torch.utils import benchmark
 from xformers.benchmarks.utils import benchmark_main_helper
+
 
 min_run_time = 0.5
 device = torch.device("cuda")

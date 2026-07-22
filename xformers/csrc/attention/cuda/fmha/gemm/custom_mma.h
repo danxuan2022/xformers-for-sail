@@ -9,8 +9,8 @@
 
 #include "custom_mma_multistage.h"
 #include "custom_mma_pipelined.h"
-#include "cutlass/gemm/threadblock/mma_multistage.h"
-#include "cutlass/gemm/threadblock/mma_pipelined.h"
+#include "cutlass2/gemm/threadblock/mma_multistage.h"
+#include "cutlass2/gemm/threadblock/mma_pipelined.h"
 
 template <typename Mma, int kMaxK>
 struct MakeCustomMma;

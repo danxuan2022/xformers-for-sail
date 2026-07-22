@@ -4,13 +4,14 @@
 # LICENSE file in the root directory of this source tree.
 
 
-from typing import Any, Dict
+from typing import Any
 
-import torch
 import triton
 
-from xformers.benchmarks.utils import TestCase, pretty_plot, pretty_print
+import torch
+from xformers.benchmarks.utils import pretty_plot, pretty_print, TestCase
 from xformers.components.reversible import ReversibleSequence
+
 
 SHAPES = [(16384, 32), (2048, 256), (128, 4096)]
 
@@ -22,7 +23,7 @@ def bench_revnet(backward: bool):
     bw = "+bw" if backward else ""
 
     for dtype in [torch.float16, torch.float32]:
-        results: Dict[str, Any] = {}
+        results: dict[str, Any] = {}
 
         for B, K in SHAPES:
             for depth in DEPTH:

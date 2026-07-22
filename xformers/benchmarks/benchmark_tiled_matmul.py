@@ -6,12 +6,13 @@
 
 import itertools
 
-import torch
-from torch.utils import benchmark
 from triton.ops.matmul import matmul as triton_matmul
 
-from xformers.benchmarks.utils import DTYPE2STR, benchmark_main_helper
+import torch
+from torch.utils import benchmark
+from xformers.benchmarks.utils import benchmark_main_helper, DTYPE2STR
 from xformers.ops.tiled_matmul import tiled_matmul
+
 
 min_run_time = 5
 

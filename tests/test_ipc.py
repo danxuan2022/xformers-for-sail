@@ -4,12 +4,13 @@
 # LICENSE file in the root directory of this source tree.
 
 import pytest
+from xformers.ops import init_ipc
+
 import torch
 import torch.distributed as dist
 
-from xformers.ops import init_ipc
-
 from .multiprocessing_utils import launch_subprocesses
+
 
 compute_capability = (0, 0)
 if torch.cuda.is_available():
@@ -53,9 +54,9 @@ def inner_test_ipc() -> None:
 
     # Verify we've received the data correctly
     for other_rank, buf in enumerate(send_bufs):
-        assert (
-            buf[0].item() == other_rank
-        ), f"[#{my_rank}] {other_rank=} != {buf[0].item()=}"
+        assert buf[0].item() == other_rank, (
+            f"[#{my_rank}] {other_rank=} != {buf[0].item()=}"
+        )
 
 
 @cuda_sm70_only

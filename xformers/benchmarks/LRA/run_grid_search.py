@@ -9,19 +9,19 @@ import os
 import uuid
 from datetime import date
 from pathlib import Path
-from typing import Dict, Iterable
+from typing import Iterable
 
 import submitit
 
 from xformers.benchmarks.LRA.run_with_submitit import (
-    Trainer,
     get_init_file,
     get_shared_folder,
     parse_args,
+    Trainer,
 )
 
 
-def grid_parameters(grid: Dict):
+def grid_parameters(grid: dict):
     """
     Yield all combinations of parameters in the grid (as a dict)
     """
@@ -117,7 +117,6 @@ def grid_search(args):
     jobs = []
 
     for i, grid_data in enumerate(hyper_parameters):
-
         args.sweep_parameters = grid_data
         run_name = f"{args.attention}"
         # run_name = "paper_config"

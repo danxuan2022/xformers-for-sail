@@ -4,8 +4,6 @@
 # LICENSE file in the root directory of this source tree.
 
 
-from typing import Dict
-
 import torch
 
 from . import __version__, _cpp_lib, _is_opensource, _is_triton_available, ops
@@ -13,7 +11,7 @@ from .ops.common import OPERATORS_REGISTRY
 from .profiler.profiler_dcgm import DCGM_PROFILER_AVAILABLE
 
 
-def get_features_status() -> Dict[str, str]:
+def get_features_status() -> dict[str, str]:
     features = {}
     for op in OPERATORS_REGISTRY:
         status_str = "available" if op.is_available() else "unavailable"

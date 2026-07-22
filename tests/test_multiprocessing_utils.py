@@ -4,12 +4,11 @@
 # LICENSE file in the root directory of this source tree.
 
 import os
-from typing import List
 
 from .multiprocessing_utils import launch_subprocesses
 
 
-def inner_test(present_parent_keys: List[str] = [], absent_parent_keys: List[str] = []):
+def inner_test(present_parent_keys: list[str] = [], absent_parent_keys: list[str] = []):
     # each time the process pool submits a job to the child processes, it will also transfer the
     # environment variables of the parent process to the child process.
     # we make sure they are available to the child process

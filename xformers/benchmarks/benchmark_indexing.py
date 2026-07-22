@@ -6,10 +6,12 @@
 
 import random
 
+from utils import benchmark_main_helper2, DTYPE2STR, product_dict
+
 import torch
-from utils import DTYPE2STR, benchmark_main_helper2, product_dict
 
 import xformers.ops as xops
+
 
 min_run_time = 0.2
 device = torch.device("cuda")

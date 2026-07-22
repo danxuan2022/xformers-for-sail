@@ -5,17 +5,18 @@
 
 
 import pytorch_lightning as pl
-import torch
-from pl_bolts.datamodules import CIFAR10DataModule
-from torch import nn
-from torchmetrics import Accuracy
-
 from examples.cifar_ViT import Classifier, VisionTransformer
+from pl_bolts.datamodules import CIFAR10DataModule
+from torchmetrics import Accuracy
 from xformers.factory import xFormer, xFormerConfig
 from xformers.helpers.hierarchical_configs import (
     BasicLayerConfig,
     get_hierarchical_configuration,
 )
+
+import torch
+from torch import nn
+
 
 # This is very close to the cifarViT example, and reuses a lot of the training code, only the model part is different.
 # There are many ways one can use xformers to write down a MetaFormer, for instance by
@@ -44,7 +45,6 @@ class MetaVisionTransformer(VisionTransformer):
         linear_warmup_ratio=0.1,
         classifier=Classifier.GAP,
     ):
-
         super(VisionTransformer, self).__init__()
 
         # all the inputs are saved under self.hparams (hyperparams)

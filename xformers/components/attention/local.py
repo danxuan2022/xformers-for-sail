@@ -43,7 +43,6 @@ class LocalAttention(Attention):
         *args,
         **kwargs,
     ):
-
         r"""
         An implementation of a sliding window attention, as proposed in RoutingTransformer_, LongFormer_ or BigBird_
 
@@ -70,9 +69,9 @@ class LocalAttention(Attention):
         self.force_sparsity = force_sparsity
 
         if not self.causal:
-            assert (
-                window_size % 2 == 1
-            ), "The window size is assumed to be odd (counts self-attention + 2 wings)"
+            assert window_size % 2 == 1, (
+                "The window size is assumed to be odd (counts self-attention + 2 wings)"
+            )
 
         self.window_size = window_size
         self.attention_mask: Optional[torch.Tensor] = None

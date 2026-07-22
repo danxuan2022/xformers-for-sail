@@ -4,7 +4,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import os
-from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple, Union, overload
+from typing import Any, Callable, Mapping, Optional, overload, Union
 
 import torch
 import torch.distributed as dist
@@ -13,6 +13,7 @@ import torch.multiprocessing.reductions
 from .. import _is_triton_available
 from .common import BaseOperator, get_xformers_operator, register_operator
 from .ipc import init_ipc
+
 
 # The sequence numbers will be communicated as 32-bit integers, due to
 # limitations in both CUDA (memset can only operate on 4 bytes at a time at
@@ -210,9 +211,9 @@ class _FusedSequenceParallel:
 
     def allgather_and_linear(
         self,
-        scattered_inputs: List[torch.Tensor],
+        scattered_inputs: list[torch.Tensor],
         my_matmul: Callable[
-            [List[torch.Tensor], int, Callable[[], torch.cuda.Stream]], None
+            [list[torch.Tensor], int, Callable[[], torch.cuda.Stream]], None
         ],
         timeout_s: int,
         _wait: bool = True,
@@ -305,8 +306,8 @@ class _FusedSequenceParallel:
         # If we're doing a regular matmul, we have a faster fused Triton kernel!
         if _is_regular_matmul and self._should_use_triton(_triton):
             from ._triton.sequence_parallel_fused_kernels import (
-                BACKWARDS_WITH_ME_FIRST,
                 _launch_triton_matmul,
+                BACKWARDS_WITH_ME_FIRST,
             )
 
             # Wait for buddy to signal that it wrote into the data before we
@@ -375,10 +376,10 @@ class _FusedSequenceParallel:
     def linear_and_reducescatter(
         self,
         my_matmul: Callable[
-            [List[torch.Tensor], int, Callable[[], torch.cuda.Stream]], None
+            [list[torch.Tensor], int, Callable[[], torch.cuda.Stream]], None
         ],
-        gathered_outputs: List[torch.Tensor],
-        scattered_outputs: List[torch.Tensor],
+        gathered_outputs: list[torch.Tensor],
+        scattered_outputs: list[torch.Tensor],
         timeout_s: int,
         _wait: bool = True,
         _memcpy: bool = True,
@@ -452,8 +453,8 @@ class _FusedSequenceParallel:
         # If we're doing a regular matmul, we have a faster fused Triton kernel!
         if _is_regular_matmul and self._should_use_triton(_triton):
             from ._triton.sequence_parallel_fused_kernels import (
-                FORWARDS_WITH_ME_LAST,
                 _launch_triton_matmul,
+                FORWARDS_WITH_ME_LAST,
             )
 
             # Signal to buddy that we have written into the data so it can
@@ -550,7 +551,7 @@ class _FusedSequenceParallel:
 # We'd store this as an attribute on the PG object itself, but some PGs are
 # pybind-bound classes and thus don't support it, so we simulate this as an
 # external cache.
-CACHE: Dict[Tuple[int, torch.dtype], Optional[_FusedSequenceParallel]] = {}
+CACHE: dict[tuple[int, torch.dtype], Optional[_FusedSequenceParallel]] = {}
 
 
 def _can_ranks_communicate_all_to_all_over_nvlink(group: dist.ProcessGroup) -> bool:
@@ -599,43 +600,41 @@ def fused_allgather_and_linear(
     num_stripes: int = 1,
     timeout_s: int = 60 * 60,
     scale_scattered_input: Optional[torch.Tensor] = None,
-    scale_weight: Optional[Union[torch.Tensor, List[torch.Tensor]]] = None,
+    scale_weight: Optional[Union[torch.Tensor, list[torch.Tensor]]] = None,
     out_dtype: Optional[torch.dtype] = None,
     **private_args_DO_NOT_USE,
-) -> torch.Tensor:
-    ...
+) -> torch.Tensor: ...
 
 
 @overload
 def fused_allgather_and_linear(
     scattered_input: torch.Tensor,
-    weight: List[torch.Tensor],
+    weight: list[torch.Tensor],
     *,
     group: dist.ProcessGroup,
-    out: Optional[List[torch.Tensor]] = None,
+    out: Optional[list[torch.Tensor]] = None,
     num_stripes: int = 1,
     timeout_s: int = 60 * 60,
     scale_scattered_input: Optional[torch.Tensor] = None,
-    scale_weight: Optional[Union[torch.Tensor, List[torch.Tensor]]] = None,
+    scale_weight: Optional[Union[torch.Tensor, list[torch.Tensor]]] = None,
     out_dtype: Optional[torch.dtype] = None,
     **private_args_DO_NOT_USE,
-) -> List[torch.Tensor]:
-    ...
+) -> list[torch.Tensor]: ...
 
 
 def fused_allgather_and_linear(
     scattered_input: torch.Tensor,
-    weight: Union[torch.Tensor, List[torch.Tensor]],
+    weight: Union[torch.Tensor, list[torch.Tensor]],
     *,
     group: dist.ProcessGroup,
-    out: Optional[Union[torch.Tensor, List[torch.Tensor]]] = None,
+    out: Optional[Union[torch.Tensor, list[torch.Tensor]]] = None,
     num_stripes: int = 1,
     timeout_s: int = 60 * 60,
     scale_scattered_input: Optional[torch.Tensor] = None,
-    scale_weight: Optional[Union[torch.Tensor, List[torch.Tensor]]] = None,
+    scale_weight: Optional[Union[torch.Tensor, list[torch.Tensor]]] = None,
     out_dtype: Optional[torch.dtype] = None,
     **private_args_DO_NOT_USE,
-) -> Union[torch.Tensor, List[torch.Tensor]]:
+) -> Union[torch.Tensor, list[torch.Tensor]]:
     """Performs a fused all-gather followed by a linear op
 
     It is equivalent to the following plain PyTorch code:
@@ -717,7 +716,7 @@ def fused_allgather_and_linear(
         ]
 
     def my_matmul(
-        inputs: List[torch.Tensor],
+        inputs: list[torch.Tensor],
         src_rank: int,
         stream_factory: Callable[[], torch.cuda.Stream],
     ) -> None:
@@ -759,9 +758,9 @@ def fused_allgather_and_linear(
 
 
 def fused_allgather_and_anything(
-    scattered_inputs: List[torch.Tensor],
+    scattered_inputs: list[torch.Tensor],
     my_matmul: Callable[
-        [List[torch.Tensor], int, Callable[[], torch.cuda.Stream]], None
+        [list[torch.Tensor], int, Callable[[], torch.cuda.Stream]], None
     ],
     *,
     group: dist.ProcessGroup,
@@ -831,43 +830,41 @@ def fused_linear_and_reducescatter(
     num_stripes: int = 1,
     timeout_s: int = 60 * 60,
     scale_gathered_input: Optional[torch.Tensor] = None,
-    scale_weight: Optional[Union[torch.Tensor, List[torch.Tensor]]] = None,
+    scale_weight: Optional[Union[torch.Tensor, list[torch.Tensor]]] = None,
     out_dtype: Optional[torch.dtype] = None,
     **private_args_DO_NOT_USE,
-) -> torch.Tensor:
-    ...
+) -> torch.Tensor: ...
 
 
 @overload
 def fused_linear_and_reducescatter(
     gathered_input: torch.Tensor,
-    weight: List[torch.Tensor],
+    weight: list[torch.Tensor],
     *,
     group: dist.ProcessGroup,
-    out: Optional[List[torch.Tensor]] = None,
+    out: Optional[list[torch.Tensor]] = None,
     num_stripes: int = 1,
     timeout_s: int = 60 * 60,
     scale_gathered_input: Optional[torch.Tensor] = None,
-    scale_weight: Optional[Union[torch.Tensor, List[torch.Tensor]]] = None,
+    scale_weight: Optional[Union[torch.Tensor, list[torch.Tensor]]] = None,
     out_dtype: Optional[torch.dtype] = None,
     **private_args_DO_NOT_USE,
-) -> List[torch.Tensor]:
-    ...
+) -> list[torch.Tensor]: ...
 
 
 def fused_linear_and_reducescatter(
     gathered_input: torch.Tensor,
-    weight: Union[torch.Tensor, List[torch.Tensor]],
+    weight: Union[torch.Tensor, list[torch.Tensor]],
     *,
     group: dist.ProcessGroup,
-    out: Optional[Union[torch.Tensor, List[torch.Tensor]]] = None,
+    out: Optional[Union[torch.Tensor, list[torch.Tensor]]] = None,
     num_stripes: int = 1,
     timeout_s: int = 60 * 60,
     scale_gathered_input: Optional[torch.Tensor] = None,
-    scale_weight: Optional[Union[torch.Tensor, List[torch.Tensor]]] = None,
+    scale_weight: Optional[Union[torch.Tensor, list[torch.Tensor]]] = None,
     out_dtype: Optional[torch.dtype] = None,
     **private_args_DO_NOT_USE,
-) -> Union[torch.Tensor, List[torch.Tensor]]:
+) -> Union[torch.Tensor, list[torch.Tensor]]:
     """Performs a fused linear op followed by a reduce-scatter
 
     It is equivalent to the following plain PyTorch code:
@@ -932,7 +929,7 @@ def fused_linear_and_reducescatter(
         ]
 
     def my_matmul(
-        outputs: List[torch.Tensor],
+        outputs: list[torch.Tensor],
         dst_rank: int,
         stream_factory: Callable[[], torch.cuda.Stream],
     ) -> None:
@@ -975,9 +972,9 @@ def fused_linear_and_reducescatter(
 
 def fused_anything_and_reducescatter(
     my_matmul: Callable[
-        [List[torch.Tensor], int, Callable[[], torch.cuda.Stream]], None
+        [list[torch.Tensor], int, Callable[[], torch.cuda.Stream]], None
     ],
-    scattered_outputs: List[torch.Tensor],
+    scattered_outputs: list[torch.Tensor],
     *,
     group: dist.ProcessGroup,
     num_stripes: int = 1,

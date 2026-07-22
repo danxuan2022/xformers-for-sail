@@ -14,6 +14,7 @@ from xformers.components.attention import ATTENTION_REGISTRY
 from xformers.components.feedforward import FEEDFORWARD_REGISTRY
 from xformers.components.positional_embedding import POSITION_EMBEDDING_REGISTRY
 
+
 logger = logging.getLogger("xformers")
 
 

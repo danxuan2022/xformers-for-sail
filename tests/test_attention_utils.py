@@ -3,12 +3,12 @@
 # This source code is licensed under the BSD license found in the
 # LICENSE file in the root directory of this source tree.
 
-import torch
-
 from xformers.components.attention.utils import (
     maybe_merge_masks,
     reshape_key_padding_mask,
 )
+
+import torch
 
 
 def test_reshape_key_padding_mask():

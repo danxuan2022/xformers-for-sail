@@ -6,8 +6,6 @@
 import itertools
 
 import pytest
-import torch
-
 import xformers.components.attention.attention_patterns as AP
 from xformers.components.attention.sparsity_config import (
     BigBirdSparsityConfig,
@@ -17,12 +15,14 @@ from xformers.components.attention.sparsity_config import (
     VariableSparsityConfig,
 )
 
+import torch
+
 
 # baseline implementations
 def _local_1d_pattern(attn_size: int, window_size: int) -> torch.Tensor:
-    assert (
-        window_size % 2 == 1
-    ), "The window size is assumed to be odd (counts self-attention + 2 wings)"
+    assert window_size % 2 == 1, (
+        "The window size is assumed to be odd (counts self-attention + 2 wings)"
+    )
     h_win_size = window_size // 2
 
     attn_shape = (attn_size, attn_size)
@@ -220,7 +220,6 @@ def test_alibi_pattern():
 
 
 def test_quick_layouts():
-
     seq_size = 128
     block_size = 16
     num_heads = 2

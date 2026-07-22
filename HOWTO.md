@@ -65,7 +65,7 @@ The dimensions expectations are, throughout the Transformer pipeline:
 
 1. Sparse attention: In that case, the attention mask is expected to be **`[Sequence, Sequence]`**, no need to expand or repeat it across the batch for instance.
 
-2. Blocksparse attention: two options are equaly valid in that case,  **`[Sequence, Sequence]`** or  **`[Head, Sequence, Sequence]`**. Attention masks can be defined on a per-head basis
+2. Blocksparse attention: two options are equally valid in that case,  **`[Sequence, Sequence]`** or  **`[Head, Sequence, Sequence]`**. Attention masks can be defined on a per-head basis
 
 The following patterns are for instance possible (from "A survey of Transformers", Lin et al.)
 
@@ -260,7 +260,7 @@ att_val = multi_head(query=query, key=query, value=query, att_mask=causal_mask)
 #########################################
 # Bonus: compare the memory use vs dense:
 def mem_use(fn, kwargs, title):
-    # bookeeping
+    # bookkeeping
     import time
 
     start = time.time()
@@ -314,7 +314,7 @@ self_attention = attention(q=inputs, k=inputs, v=inputs, mask=mask)
 
 Any of the other attention mechanisms can be instantiated and called in a similar way.
 
-- Alternatively, a `build_attention` helper is provided, which takes a dict as an input. In that case, you defer a lot of the instantiation work to xFormers, which makes it a little more obscure although the parameters are hopefully straightforward. This was initially built for internal use in xFormers, to make sure that we can programatically build and test all possible combinations. In turn this should allow you to do sweeps or architecture search, given that the multihead attention definition becomes something like:
+- Alternatively, a `build_attention` helper is provided, which takes a dict as an input. In that case, you defer a lot of the instantiation work to xFormers, which makes it a little more obscure although the parameters are hopefully straightforward. This was initially built for internal use in xFormers, to make sure that we can programmatically build and test all possible combinations. In turn this should allow you to do sweeps or architecture search, given that the multihead attention definition becomes something like:
 
 ```python
 from xformers.components import MultiHeadDispatch, build_attention
@@ -441,7 +441,7 @@ print(y)
 
 ### Fair enough, now I just want to build models and be done with it
 
-This is the last example in the series, and goes one level up again, so that we consider building a whole Tranformer/xFormer model. Please note that this is just an example, because building the whole model from explicit parts is always an option, from pure PyTorch building blocks or adding some xFormers primitives.
+This is the last example in the series, and goes one level up again, so that we consider building a whole Transformer/xFormer model. Please note that this is just an example, because building the whole model from explicit parts is always an option, from pure PyTorch building blocks or adding some xFormers primitives.
 
 #### PyTorch Transformer
 
@@ -659,7 +659,7 @@ python3 run_tasks.py --attention <your attention name> --task <task> --config <c
 or even submit a batch of jobs to a SLURM enabled cluster with
 
 ```bash
-python3 batch_submit.py -c code/config.json -ck <your checkpoing and log path> -a <your attention name>
+python3 batch_submit.py -c code/config.json -ck <your checkpoint and log path> -a <your attention name>
 ```
 
 ### Contributing an extension to the xFormers repository
@@ -810,4 +810,4 @@ A small helper is provided to make it easier to generate matching configurations
     config = xFormerConfig(xformer_config)
 ```
 
-Note that the actual patch embedding module can be changed as you see fit, so that the patch merging proposed by [Swin Transformer](https://arxiv.org/pdf/2103.14030.pdf) for instance is useable here also.
+Note that the actual patch embedding module can be changed as you see fit, so that the patch merging proposed by [Swin Transformer](https://arxiv.org/pdf/2103.14030.pdf) for instance is usable here also.

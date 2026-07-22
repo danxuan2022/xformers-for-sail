@@ -8,7 +8,7 @@ import copy
 import functools
 import linecache
 import sys
-from typing import Any, Dict, List
+from typing import Any
 
 import triton
 
@@ -114,7 +114,7 @@ class _VisitorUnrollKernel(ast.NodeTransformer):
 # Hackfix to get access to get source-code for
 # `exec`-created functions - see https://stackoverflow.com/a/69668999
 _getlines_orig = None
-_FILENAME_TO_SRC: Dict[str, List[str]] = {}
+_FILENAME_TO_SRC: dict[str, list[str]] = {}
 
 
 def _monkey_patched_getlines(filename, module_globals=None):
@@ -153,7 +153,7 @@ def unroll_varargs(kernel, N: int):
     # Create function given source
     code = compile(new_src, fn_filename, "exec")
 
-    _locals: Dict[str, Any] = {}
+    _locals: dict[str, Any] = {}
     exec(code, kernel.fn.__globals__, _locals)
     assert len(_locals) == 1, len(_locals)
     fn = next(iter(_locals.values()))
@@ -170,4 +170,4 @@ def unroll_varargs(kernel, N: int):
 
 # Note: just import this to make mypy happy
 # when annotating variables with `VAR_ARGS_ARRAY`
-VAR_ARGS_ARRAY = List[Any]
+VAR_ARGS_ARRAY = list[Any]

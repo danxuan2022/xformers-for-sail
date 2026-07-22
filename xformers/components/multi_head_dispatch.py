@@ -6,7 +6,7 @@
 
 import logging
 from dataclasses import asdict, dataclass
-from typing import Optional, Tuple
+from typing import Optional
 
 import torch
 import torch.nn as nn
@@ -15,6 +15,7 @@ from torch.nn.init import constant_
 from xformers.components.attention import Attention
 from xformers.components.input_projection import InputProjection, InputProjectionConfig
 from xformers.components.positional_embedding import RotaryEmbedding
+
 
 logger = logging.getLogger("xformers")
 
@@ -78,7 +79,7 @@ class MultiHeadDispatch(nn.Module):
         dim_model: int,
         num_heads: int,
         attention: Attention,
-        bias: Tuple[bool, bool, bool, bool] = (True, True, True, True),
+        bias: tuple[bool, bool, bool, bool] = (True, True, True, True),
         residual_dropout: float = 0.0,
         use_separate_proj_weight: bool = True,
         dim_key: Optional[int] = None,
@@ -178,9 +179,9 @@ class MultiHeadDispatch(nn.Module):
 
         # Catch different query and key length but a causal attention
         if S_Q != S_K:
-            assert (
-                not self.attention.requires_same_k_q_dimensions
-            ), "This attention mechanism requires query and key to have the same sequence (context) lengths"
+            assert not self.attention.requires_same_k_q_dimensions, (
+                "This attention mechanism requires query and key to have the same sequence (context) lengths"
+            )
 
             if hasattr(self.attention, "causal"):
                 assert not self.attention.causal, (
@@ -190,15 +191,15 @@ class MultiHeadDispatch(nn.Module):
 
         kw_mask_args = {}
         if att_mask is not None:
-            assert (
-                self.attention.supports_attention_mask
-            ), "This attention does not support attention masks"
+            assert self.attention.supports_attention_mask, (
+                "This attention does not support attention masks"
+            )
             kw_mask_args["att_mask"] = att_mask
 
         if key_padding_mask is not None:
-            assert (
-                self.attention.supports_key_padding_mask
-            ), "This attention does not support key padding masks"
+            assert self.attention.supports_key_padding_mask, (
+                "This attention does not support key padding masks"
+            )
             kw_mask_args["key_padding_mask"] = key_padding_mask
 
         if self.attention.requires_skip_multi_head:
@@ -212,9 +213,9 @@ class MultiHeadDispatch(nn.Module):
 
         # Check the dimensions properly
         def check(t, name):
-            assert (
-                t.shape[2] % self.num_heads == 0
-            ), f"the {name} embeddings need to be divisible by the number of heads"
+            assert t.shape[2] % self.num_heads == 0, (
+                f"the {name} embeddings need to be divisible by the number of heads"
+            )
 
         check(q, "projected query")
         check(v, "projected value")

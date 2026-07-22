@@ -1,0 +1,13 @@
+SHELL = /bin/bash
+
+BIN=${APP_NAME}
+
+NVCC_FLAGS = -std=c++11 -Xarch_host -g -mllvm -ppu-simt-branch=true -DSWITCH_TO_HGGCRT -I${PWD} \
+    -I${CUTLASS_ROOT}/include -I${CUTLASS_ROOT}/examples/common -I${CUTLASS_ROOT}/tools/util/include \
+    -Xcompiler=-fPIE -x hggc -L$(PPU_SDK)/CUDA_SDK/lib64 \
+    -lcuda -lcudart -lrt -lpthread -ldl -lcuda_wrapper -lhggc_wrapper
+
+TARGET = ${BIN}.ppu
+
+${TARGET} :
+	clang++  ${NVCC_FLAGS} -o ${TARGET} ${BIN}.cpp register_layout.cu

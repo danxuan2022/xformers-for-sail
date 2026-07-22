@@ -6,13 +6,13 @@
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 
 import torch
 
 from xformers._deprecation_warning import deprecated_function
 from xformers.components import reversible as rv
-from xformers.components.residual import ResidualNormStyle, get_deepnorm_coefficients
+from xformers.components.residual import get_deepnorm_coefficients, ResidualNormStyle
 from xformers.factory.block_configs import (
     xFormerBlockConfig,
     xFormerDecoderConfig,
@@ -20,6 +20,7 @@ from xformers.factory.block_configs import (
 )
 from xformers.factory.block_factory import xFormerDecoderBlock, xFormerEncoderBlock
 from xformers.factory.weight_init import get_weight_init_fn, xFormerWeightInit
+
 
 logger = logging.getLogger("xformers")
 
@@ -74,13 +75,13 @@ class xFormerConfig:
     .. _`Using the Output Embedding to Improve Language Models`: https://arxiv.org/pdf/1608.05859.pdf
     """
 
-    stack_configs: Union[List[xFormerBlockConfig], Dict[str, xFormerBlockConfig]]
+    stack_configs: Union[list[xFormerBlockConfig], dict[str, xFormerBlockConfig]]
     tie_embedding_weights: bool = False
     weight_init: xFormerWeightInit = xFormerWeightInit.ViT
 
     def __init__(
         self,
-        stack_configs: Union[List[Dict[str, Any]], Dict[str, Dict[str, Any]]],
+        stack_configs: Union[list[dict[str, Any]], dict[str, dict[str, Any]]],
         tie_embedding_weights: bool = False,
         weight_init: xFormerWeightInit = xFormerWeightInit.ViT,
     ):
@@ -109,7 +110,7 @@ class xFormer(torch.nn.Module):
     def __init__(
         self,
         stack_configs: Union[
-            xFormerBlockConfig, List[xFormerBlockConfig], Dict[str, xFormerBlockConfig]
+            xFormerBlockConfig, list[xFormerBlockConfig], dict[str, xFormerBlockConfig]
         ],
         tie_embedding_weights: bool = False,
         weight_init: xFormerWeightInit = xFormerWeightInit.ViT,
@@ -121,19 +122,19 @@ class xFormer(torch.nn.Module):
         super().__init__()
         deprecated_function(self)
 
-        if isinstance(stack_configs, Dict):
+        if isinstance(stack_configs, dict):
             stack_configs = list(stack_configs.values())
 
         # Convenience, users can pass either a list of configs or a single one
-        if not isinstance(stack_configs, List):
+        if not isinstance(stack_configs, list):
             stack_configs = [stack_configs]
 
         # Sanity checks, some config combinations do not make sense
         self._verify_reversible(stack_configs)
         self._verify_deepnorm(stack_configs)
 
-        encoders: List[torch.nn.Module] = []
-        decoders: List[torch.nn.Module] = []
+        encoders: list[torch.nn.Module] = []
+        decoders: list[torch.nn.Module] = []
 
         self.reversible_encoder = False
         self.rev_enc_pose_encoding = None
@@ -176,9 +177,9 @@ class xFormer(torch.nn.Module):
                     recipient.append(block)  # type: ignore
 
         # Tie embedding weights, if requested and possible
-        assert (
-            not tie_embedding_weights or not self.reversible_encoder
-        ), "Reversible layers and  tied embeddings is not supported for now"
+        assert not tie_embedding_weights or not self.reversible_encoder, (
+            "Reversible layers and  tied embeddings is not supported for now"
+        )
 
         if (
             tie_embedding_weights
@@ -202,9 +203,9 @@ class xFormer(torch.nn.Module):
             stack_configs[0].residual_norm_style == ResidualNormStyle.DeepNorm
         )
 
-        assert (
-            not use_deepnorm or not self.reversible_encoder
-        ), "Reversible layers and deepnorm is not supported for now"
+        assert not use_deepnorm or not self.reversible_encoder, (
+            "Reversible layers and deepnorm is not supported for now"
+        )
 
         self.init_weights(weight_init=weight_init, use_deep_norm=use_deepnorm)
 
@@ -214,7 +215,7 @@ class xFormer(torch.nn.Module):
             config.stack_configs, config.tie_embedding_weights, config.weight_init
         )
 
-    def _verify_reversible(self, stack_configs: List[xFormerBlockConfig]):
+    def _verify_reversible(self, stack_configs: list[xFormerBlockConfig]):
         reversible = [
             c.reversible
             for c in filter(lambda x: x.block_type == "encoder", stack_configs)
@@ -225,7 +226,7 @@ class xFormer(torch.nn.Module):
             + f"Currently {reversible}"
         )
 
-    def _verify_deepnorm(self, stack_configs: List[xFormerBlockConfig]):
+    def _verify_deepnorm(self, stack_configs: list[xFormerBlockConfig]):
         deepnorm = [
             c.residual_norm_style == ResidualNormStyle.DeepNorm for c in stack_configs
         ]
@@ -240,7 +241,8 @@ class xFormer(torch.nn.Module):
         # and decoder, depending on the general model structure (number of respective layers)
         if use_deep_norm:
             encoder_coefficients, decoder_coefficients = get_deepnorm_coefficients(
-                encoder_layers=len(self.encoders), decoder_layers=len(self.decoders)  # type: ignore
+                encoder_layers=len(self.encoders),
+                decoder_layers=len(self.decoders),  # type: ignore
             )
         else:
             encoder_coefficients, decoder_coefficients = None, None
@@ -269,7 +271,6 @@ class xFormer(torch.nn.Module):
         encoder_input_mask: Optional[torch.Tensor] = None,
         decoder_input_mask: Optional[torch.Tensor] = None,
     ) -> Optional[torch.Tensor]:
-
         # Encode to latent space if encoder is present
         if len(list(self.encoders.parameters())) > 0:
             encoders = self.encoders

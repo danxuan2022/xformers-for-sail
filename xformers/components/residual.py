@@ -6,7 +6,7 @@
 
 from collections import namedtuple
 from enum import Enum
-from typing import List, Optional, Tuple
+from typing import Optional
 
 import torch
 import torch.nn as nn
@@ -48,8 +48,6 @@ class RequiresWrappedInputs:
     """Used to mark, through inheritance,
     the fact that this class will require inputs to be passed as a single list"""
 
-    pass
-
 
 # CREDITS: the following is inspired by FastAI's Transformer implementation
 class Residual(nn.Module, RequiresWrappedInputs):
@@ -70,7 +68,7 @@ class Residual(nn.Module, RequiresWrappedInputs):
         # PreNorm and PostNorm require all the tensors to be passed as a list
         self.wrap_inputs = isinstance(layer, RequiresWrappedInputs)
 
-    def forward(self, inputs: List[torch.Tensor], **kwargs):
+    def forward(self, inputs: list[torch.Tensor], **kwargs):
         if self.scale is not None:
             residue = inputs[0] * self.scale
         else:
@@ -95,14 +93,13 @@ class PreNorm(nn.Module, RequiresWrappedInputs):
         normalization: NormalizationType,
         use_triton: bool = True,
     ):
-
         super().__init__()
         self.norm = get_normalization_layer(normalization)(d_norm)
 
         self.sublayer = sublayer
         self.wrap_inputs = isinstance(sublayer, RequiresWrappedInputs)
 
-    def forward(self, inputs: List[torch.Tensor], **kwargs):
+    def forward(self, inputs: list[torch.Tensor], **kwargs):
         assert len(inputs) > 0
 
         # Perf improvement: if the inputs are all the same, only norm once
@@ -137,7 +134,7 @@ class PostNorm(nn.Module, RequiresWrappedInputs):
         self.sublayer = sublayer
         self.wrap_inputs = isinstance(sublayer, RequiresWrappedInputs)
 
-    def forward(self, inputs: List[torch.Tensor], **kwargs):
+    def forward(self, inputs: list[torch.Tensor], **kwargs):
         if self.wrap_inputs:
             x = self.sublayer(inputs=inputs, **kwargs)
         else:
@@ -150,7 +147,7 @@ DeepNormCoefficients = namedtuple("DeepNormCoefficients", ["alpha", "beta"])
 
 def get_deepnorm_coefficients(
     encoder_layers: int, decoder_layers: int
-) -> Tuple[Optional[DeepNormCoefficients], Optional[DeepNormCoefficients]]:
+) -> tuple[Optional[DeepNormCoefficients], Optional[DeepNormCoefficients]]:
     """
     See DeepNet_.
 

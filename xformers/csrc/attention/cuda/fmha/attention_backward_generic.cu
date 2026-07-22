@@ -16,15 +16,52 @@
 #include <c10/cuda/CUDAGuard.h>
 #include <torch/library.h>
 
+// add for at::empty
+#include <ATen/ops/empty.h>
+#include <ATen/ops/empty_like.h>
+
+
+#ifdef USE_PPU
+#if defined(__HGGCCC__)
+#ifndef ENABLE_AIU
+#define ENABLE_AIU 1
+#endif
+#else
+#define ENABLE_AIU 0
+#endif
+#include "accutlass.h"
+#include "autogen_ppu/cutlassB.h"
+#include "gemm_kernel_utils_ppu.h"
+#else
 #include "autogen/cutlassB.h"
 #include "gemm_kernel_utils.h"
 #include "kernel_backward.h"
+#endif
 #include "pytorch_utils.h"
 
+// #define DEBUG
 #define USE_MEM_EFF_ATTENTION
 
-namespace {
+// namespace {
 using namespace at;
+// 打印一个tensor
+#include <iostream>
+#include <algorithm>
+#include <optional>
+// #include <ATen/ATen.h>  // Include the appropriate header for at::Tensor
+
+void printTensor(const std::optional<at::Tensor>& tensorOpt) {
+    // 检查 optional 是否有值
+    if (tensorOpt.has_value()) {
+        // 获取 Tensor 的引用
+        const at::Tensor& tensor = tensorOpt.value();
+        // 打印 Tensor 的信息
+        std::cout << "Tensor size: " << tensor.sizes() << std::endl;  // 打印张量的形状
+        std::cout << "Tensor values: " << tensor << std::endl;         // 打印张量的值
+    } else {
+        std::cout << "No tensor available." << std::endl;            // 打印没有值的消息
+    }
+}
 
 std::tuple<at::Tensor, at::Tensor, at::Tensor, at::Tensor>
 mem_efficient_attention_backward_cutlass(
@@ -63,16 +100,24 @@ mem_efficient_attention_backward_cutlass(
   // This is needed because SaveVariable automatically converts
   // std::optional to undefined tensor
   std::optional<Tensor> bias, cu_seqlens_q, cu_seqlens_k;
-  bias = kernel_bias.has_value() && !kernel_bias->defined() ? c10::nullopt
+  bias = kernel_bias.has_value() && !kernel_bias->defined() ? std::nullopt
                                                             : kernel_bias;
   cu_seqlens_q =
       cu_seqlens_q_dummy.has_value() && !cu_seqlens_q_dummy->defined()
-      ? c10::nullopt
+      ? std::nullopt
       : cu_seqlens_q_dummy;
   cu_seqlens_k =
       cu_seqlens_k_dummy.has_value() && !cu_seqlens_k_dummy->defined()
-      ? c10::nullopt
+      ? std::nullopt
       : cu_seqlens_k_dummy;
+
+  
+#ifdef DEBUG
+  std::cout << "cu_seqlens_q_dummy: " << std::endl;
+  printTensor(cu_seqlens_q_dummy);
+  std::cout << "cu_seqlens_q:  " << std::endl;
+  printTensor(cu_seqlens_q);
+#endif
 
   // ndim
   TORCH_CHECK(query.dim() == grad_out_.dim());
@@ -140,6 +185,11 @@ mem_efficient_attention_backward_cutlass(
   int64_t Kv = value.size(3);
 
   at::Tensor grad_q, grad_k, grad_v, grad_bias;
+#ifdef USE_PPU
+  grad_q = at::empty(query.sizes(), query.options());
+  grad_k = at::empty(key.sizes(), key.options());
+  grad_v = at::empty(value.sizes(), value.options());
+#else
   if (query.size(1) == key.size(1) && query.size(3) == value.size(3) &&
       query.storage().is_alias_of(key.storage()) &&
       query.storage().is_alias_of(value.storage())) {
@@ -157,8 +207,16 @@ mem_efficient_attention_backward_cutlass(
     grad_k = at::empty(key.sizes(), key.options());
     grad_v = at::empty(value.sizes(), value.options());
   }
-
+#endif
+#ifdef USE_PPU
+    grad_q.zero_();
+    grad_k.zero_();
+    grad_v.zero_();
+#endif
   if (bias_requires_grad) {
+    TORCH_CHECK(
+        bias.has_value(),
+        "bias_requires_grad is true but no bias was provided");
     // force alignment for the last dim
     std::vector<int64_t> sz = bias->sizes().vec();
     int64_t lastDim = sz[sz.size() - 1];
@@ -166,6 +224,10 @@ mem_efficient_attention_backward_cutlass(
     sz[sz.size() - 1] = alignTo * ((lastDim + alignTo - 1) / alignTo);
     grad_bias = at::empty(sz, bias->options())
                     .slice(/*dim=*/-1, /*start=*/0, /*end=*/lastDim);
+#ifdef USE_PPU
+    grad_bias.zero_();
+#endif
+
   }
   at::Tensor workspace;
 
@@ -193,7 +255,7 @@ mem_efficient_attention_backward_cutlass(
   const auto maxK = std::max(query.size(3), value.size(3));
   const auto maxShmem = p->sharedMemPerBlockOptin;
 
-  auto launchKernel = [&](auto _k, auto kernel_fn) {
+  auto launchKernel_fa1 = [&](auto _k, auto kernel_fn) {
     using Kernel = decltype(_k);
     using scalar_t = typename Kernel::scalar_t;
     (void)_k;
@@ -201,19 +263,39 @@ mem_efficient_attention_backward_cutlass(
     if (kernel_launched) {
       return;
     }
+#ifdef DEBUG
+    std::cout << "[DEBUG] Backward_fa1: Kernel::kMaxK " << Kernel::kMaxK << ", maxK: " << maxK << std::endl;
+    // std::cout << "kMaxK: " << kMaxK << ", key.size(): " << key.size(3) << std::endl;
+#endif
     // Check if this kernel is compatible
     if (Kernel::kMaxK < maxK) {
       return;
     }
+
     // Dropout must be supported if we need it
     if (use_dropout && !Kernel::kApplyDropout) {
       return;
     }
+#ifdef DEBUG
+        // std:cout << std::boolalpha;
+        std::cout << "[DEBUG] Backward_fa1: Kernel::kKeysQueriesAlignedToBlockSize " << Kernel::kKeysQueriesAlignedToBlockSize << std::endl;
+        std::cout << "[DEBUG] Backward_fa1: cu_seqlens_q.has_value() "<< cu_seqlens_q.has_value() << std::endl;
+        std::cout << "[DEBUG] Backward_fa1: M " << M << " Kernel::kBlockSizeI:" << Kernel::kBlockSizeI << std::endl;
+        std::cout << "[DEBUG] Backward_fa1: N " << N << " Kernel::kBlockSizeJ:" << Kernel::kBlockSizeJ << std::endl;
+        // std::cout << std::noboolalpha; 
+#endif
     if (Kernel::kKeysQueriesAlignedToBlockSize &&
         (cu_seqlens_q.has_value() || M % Kernel::kBlockSizeI ||
          N % Kernel::kBlockSizeJ)) {
+#ifdef DEBUG
+        std::cout << "[DEBUG] Backward_fa1: Check Fail\n" << std::endl;
+#endif
       return;
     }
+#ifdef DEBUG
+    std::cout << "[DEBUG] Backward_fa1:  Kernel::kMinimumAlignment " <<  Kernel::kMinimumAlignment << ", query.stride(2): " << query.stride(2) << ", key.stride(2): " << key.stride(2) << ", value.stride(2): " << value.stride(2)<< std::endl;
+    // std::cout << "kMaxK: " << kMaxK << ", key.size(): " << key.size(3) << std::endl;
+#endif
     // Alignment
     if ((query.stride(2) % Kernel::kMinimumAlignment) ||
         (key.stride(2) % Kernel::kMinimumAlignment) ||
@@ -222,24 +304,40 @@ mem_efficient_attention_backward_cutlass(
     }
     // Uses too much shmem
     size_t smem_bytes = sizeof(typename Kernel::SharedStorage);
+#ifdef DEBUG
+    std::cout << "[DEBUG] Backward_fa1: smem_bytes " << smem_bytes << ", maxShmem: " << maxShmem << std::endl;
+    // std::cout << "kMaxK: " << kMaxK << ", key.size(): " << key.size(3) << std::endl;
+#endif
     if (smem_bytes > maxShmem) {
       return;
     }
-
+#ifdef DEBUG
+    std::cout << "[DEBUG] Backward_fa1: Check all pass"<< std::endl;
+#endif
     kernel_launched = true;
 
     // TODO: Fuse this into a kernel?
     // This is a bottleneck for smaller sequences (M <= 128)
+
+    // comment for test
     auto delta = Kernel::kKernelComputesDelta
         ? at::empty({B, nH, M}, query.options().dtype(at::ScalarType::Float))
         : (grad_out.to(at::kFloat) * out.to(at::kFloat))
               .sum(-1)
               .transpose(-2, -1)
               .contiguous();
+// comment for test
+#ifdef USE_PPU
+if (Kernel::kKernelComputesDelta) {
+      delta.zero_();
+    }
+#endif
     TORCH_INTERNAL_ASSERT(delta.size(0) == B);
     TORCH_INTERNAL_ASSERT(delta.size(1) == nH);
     TORCH_INTERNAL_ASSERT(delta.size(2) == M);
-
+#ifdef DEBUG
+    std::cout << "[DEBUG] Backward_fa1: attention_backward_generic.ci debug_point 0"<< std::endl;
+#endif
     typename Kernel::Params p;
     p.query_ptr = (scalar_t*)query.data_ptr();
     p.key_ptr = (scalar_t*)key.data_ptr();
@@ -250,6 +348,7 @@ mem_efficient_attention_backward_cutlass(
     p.grad_query_ptr = (scalar_t*)grad_q.data_ptr();
     p.grad_key_ptr = (scalar_t*)grad_k.data_ptr();
     p.grad_value_ptr = (scalar_t*)grad_v.data_ptr();
+    // comment for test
     p.delta_ptr = (float*)delta.data_ptr();
     p.head_dim = query.size(3);
     p.head_dim_value = value.size(3);
@@ -267,10 +366,12 @@ mem_efficient_attention_backward_cutlass(
       p.cu_seqlens_q_ptr = (int32_t*)cu_seqlens_q->data_ptr();
       p.cu_seqlens_k_ptr = (int32_t*)cu_seqlens_k->data_ptr();
     }
-
-    if (window_size.has_value()) {
-      p.window_size = *window_size;
-    }
+#ifdef DEBUG
+    std::cout << "[DEBUG] Backward_fa1: attention_backward_generic.ci debug_point 1"<< std::endl;
+#endif
+    // if (window_size.has_value()) {
+    //   p.window_size = *window_size;
+    // }
 
     ASSIGN_CHECK_OVERFLOW(p.lse_strideB, logsumexp.stride(0));
     ASSIGN_CHECK_OVERFLOW(p.lse_strideH, logsumexp.stride(1));
@@ -301,6 +402,7 @@ mem_efficient_attention_backward_cutlass(
     ASSIGN_CHECK_OVERFLOW(p.q_strideH, query.stride(2));
     ASSIGN_CHECK_OVERFLOW(p.k_strideH, key.stride(2));
     ASSIGN_CHECK_OVERFLOW(p.v_strideH, value.stride(2));
+    // comment for test
     ASSIGN_CHECK_OVERFLOW(p.delta_strideB, delta.stride(0));
     ASSIGN_CHECK_OVERFLOW(p.delta_strideH, delta.stride(1));
 
@@ -345,7 +447,9 @@ mem_efficient_attention_backward_cutlass(
       p.rng_engine_inputs = rng_engine_inputs;
       p.dropout_prob = dropout_p;
     }
-
+#ifdef DEBUG
+    std::cout << "[DEBUG] Backward_fa1: attention_backward_generic.ci debug_point 2"<< std::endl;
+#endif
     // Heuristic for finding optimal number of splits
     auto parallelism_without_split_key =
         p.getBlocksGrid().x * p.getBlocksGrid().y * p.getBlocksGrid().z;
@@ -365,15 +469,21 @@ mem_efficient_attention_backward_cutlass(
       }
       // Increasing `split_keys` leads to using more gmem for temporary storage
       // when we need a staging area for gK/gV. let's avoid that
+
+      // comment for test
       if (Kernel::kNeedsAccumGradK || Kernel::kNeedsAccumGradV) {
         p.num_splits_key = std::min(
             int(p.num_splits_key), 200 / (p.num_batches * p.num_heads));
       }
     }
+    // comment&modify for test
     if (!Kernel::kEnableSplitKeys || p.num_splits_key < 1) {
       p.num_splits_key = 1;
     }
 
+#ifdef DEBUG
+    std::cout << "[DEBUG] Backward_fa1: attention_backward_generic.ci debug_point 3"<< std::endl;
+#endif
     auto& ctx = at::globalContext();
     if (ctx.deterministicAlgorithms()) {
       if (ctx.deterministicAlgorithmsWarnOnly()) {
@@ -406,7 +516,9 @@ mem_efficient_attention_backward_cutlass(
       return;
     }
     Kernel::check_supported(p);
-
+#ifdef DEBUG
+    std::cout << "[DEBUG] Backward_fa1: attention_backward_generic.ci debug_point 4"<< std::endl;
+#endif
     if (smem_bytes > 0xc000) {
       // https://docs.nvidia.com/cuda/cuda-c-programming-guide/#features-and-technical-specifications-technical-specifications-per-compute-capability
       auto err = cudaFuncSetAttribute(
@@ -439,12 +551,347 @@ mem_efficient_attention_backward_cutlass(
         checkBinaryArchMatches(), "Something went wrong in the build process");
 #endif
 
-    kernel_fn<<<p.getBlocksGrid(), p.getThreadsGrid(), smem_bytes, stream>>>(p);
+   kernel_fn<<<p.getBlocksGrid(), p.getThreadsGrid(), smem_bytes, stream>>>(p);
   };
 
-  DISPATCH_TYPES(query, ([&]() {
-                   dispatch_cutlassB<scalar_t>(launchKernel, computeCapability);
+
+  // launchKernel for fa2
+  auto launchKernel_fa2 = [&](auto _k, auto kernel_fn) {
+    using Kernel = decltype(_k);
+    using scalar_t = typename Kernel::scalar_t;
+    (void)_k;
+
+    if (kernel_launched) {
+      return;
+    }
+#ifdef DEBUG
+    std::cout << "[DEBUG] Backward_fa2: Kernel::kMaxK " << Kernel::kMaxK << ", maxK: " << maxK << std::endl;
+    // std::cout << "kMaxK: " << kMaxK << ", key.size(): " << key.size(3) << std::endl;
+#endif
+    // Check if this kernel is compatible
+    if (Kernel::kMaxK < maxK) {
+      return;
+    }
+
+    // Dropout must be supported if we need it
+    if (use_dropout && !Kernel::kApplyDropout) {
+      return;
+    }
+#ifdef DEBUG
+        // std:cout << std::boolalpha;
+        std::cout << "[DEBUG] Backward_fa2: Kernel::kKeysQueriesAlignedToBlockSize " << Kernel::kKeysQueriesAlignedToBlockSize << std::endl;
+        std::cout << "[DEBUG] Backward_fa2: cu_seqlens_q.has_value() "<< cu_seqlens_q.has_value() << std::endl;
+        std::cout << "[DEBUG] Backward_fa2: M " << M << " Kernel::kBlockSizeI:" << Kernel::kBlockSizeI << std::endl;
+        std::cout << "[DEBUG] Backward_fa2: N " << N << " Kernel::kBlockSizeJ:" << Kernel::kBlockSizeJ << std::endl;
+        // std::cout << std::noboolalpha; 
+#endif
+    if (Kernel::kKeysQueriesAlignedToBlockSize &&
+        (cu_seqlens_q.has_value() || M % Kernel::kBlockSizeI ||
+         N % Kernel::kBlockSizeJ)) {
+#ifdef DEBUG
+        std::cout << "[DEBUG] Backward_fa2: Check Fail\n" << std::endl;
+#endif
+      return;
+    }
+#ifdef DEBUG
+    std::cout << "[DEBUG] Backward_fa2:  Kernel::kMinimumAlignment " <<  Kernel::kMinimumAlignment << ", query.stride(2): " << query.stride(2) << ", key.stride(2): " << key.stride(2) << ", value.stride(2): " << value.stride(2)<< std::endl;
+    // std::cout << "kMaxK: " << kMaxK << ", key.size(): " << key.size(3) << std::endl;
+#endif
+    // Alignment
+    if ((query.stride(2) % Kernel::kMinimumAlignment) ||
+        (key.stride(2) % Kernel::kMinimumAlignment) ||
+        (value.stride(2) % Kernel::kMinimumAlignment)) {
+      return;
+    }
+    // Uses too much shmem
+    size_t smem_bytes = sizeof(typename Kernel::SharedStorage);
+#ifdef DEBUG
+    std::cout << "[DEBUG] Backward_fa2: smem_bytes " << smem_bytes << ", maxShmem: " << maxShmem << std::endl;
+    // std::cout << "kMaxK: " << kMaxK << ", key.size(): " << key.size(3) << std::endl;
+#endif
+    if (smem_bytes > maxShmem) {
+      return;
+    }
+#ifdef DEBUG
+    std::cout << "[DEBUG] Backward_fa2: Check all pass"<< std::endl;
+#endif
+    kernel_launched = true;
+
+    // TODO: Fuse this into a kernel?
+    // This is a bottleneck for smaller sequences (M <= 128)
+
+    // comment for test
+    auto delta = Kernel::kKernelComputesDelta
+        ? at::empty({B, nH, M}, query.options().dtype(at::ScalarType::Float))
+        : (grad_out.to(at::kFloat) * out.to(at::kFloat))
+              .sum(-1)
+              .transpose(-2, -1)
+              .contiguous();
+// comment for test
+#ifdef USE_PPU
+if (Kernel::kKernelComputesDelta) {
+      delta.zero_();
+    }
+#endif
+    TORCH_INTERNAL_ASSERT(delta.size(0) == B);
+    TORCH_INTERNAL_ASSERT(delta.size(1) == nH);
+    TORCH_INTERNAL_ASSERT(delta.size(2) == M);
+#ifdef DEBUG
+    std::cout << "[DEBUG] Backward_fa2: attention_backward_generic.ci debug_point 0"<< std::endl;
+#endif
+    typename Kernel::Params p;
+    p.query_ptr = (scalar_t*)query.data_ptr();
+    p.key_ptr = (scalar_t*)key.data_ptr();
+    p.value_ptr = (scalar_t*)value.data_ptr();
+    p.logsumexp_ptr = (typename Kernel::lse_scalar_t*)logsumexp.data_ptr();
+    p.output_ptr = (scalar_t*)out.data_ptr();
+    p.grad_output_ptr = (scalar_t*)grad_out.data_ptr();
+    p.grad_query_ptr = (scalar_t*)grad_q.data_ptr();
+    p.grad_key_ptr = (scalar_t*)grad_k.data_ptr();
+    p.grad_value_ptr = (scalar_t*)grad_v.data_ptr();
+    // comment for test
+    p.delta_ptr = (float*)delta.data_ptr();
+    p.head_dim = query.size(3);
+    p.head_dim_value = value.size(3);
+    p.num_queries = max_seqlen_q;
+    p.num_keys = max_seqlen_k;
+    p.num_batches = cu_seqlens_q.has_value() ? cu_seqlens_q->size(0) - 1 : B;
+    p.num_heads = nH;
+    p.custom_mask_type = custom_mask_type;
+    if (scale.has_value()) {
+      p.scale = float(*scale);
+    } else {
+      p.scale = float(1.0 / std::sqrt(float(p.head_dim)));
+    }
+    if (cu_seqlens_q.has_value()) {
+      p.cu_seqlens_q_ptr = (int32_t*)cu_seqlens_q->data_ptr();
+      p.cu_seqlens_k_ptr = (int32_t*)cu_seqlens_k->data_ptr();
+    }
+#ifdef DEBUG
+    std::cout << "[DEBUG] Backward_fa2: attention_backward_generic.ci debug_point 1"<< std::endl;
+#endif
+    // if (window_size.has_value()) {
+    //   p.window_size = *window_size;
+    // }
+
+    ASSIGN_CHECK_OVERFLOW(p.lse_strideB, logsumexp.stride(0));
+    ASSIGN_CHECK_OVERFLOW(p.lse_strideH, logsumexp.stride(1));
+    ASSIGN_CHECK_OVERFLOW(p.gO_strideB, grad_out.stride(0));
+    ASSIGN_CHECK_OVERFLOW(p.gO_strideM, grad_out.stride(1));
+    ASSIGN_CHECK_OVERFLOW(p.gO_strideH, grad_out.stride(2));
+
+    ASSIGN_CHECK_OVERFLOW(p.o_strideB, out.stride(0));
+    ASSIGN_CHECK_OVERFLOW(p.o_strideH, out.stride(2));
+
+    ASSIGN_CHECK_OVERFLOW(p.gQ_strideB, grad_q.stride(0));
+    ASSIGN_CHECK_OVERFLOW(p.gK_strideB, grad_k.stride(0));
+    ASSIGN_CHECK_OVERFLOW(p.gV_strideB, grad_v.stride(0));
+    ASSIGN_CHECK_OVERFLOW(p.gQ_strideH, grad_q.stride(2));
+    ASSIGN_CHECK_OVERFLOW(p.gK_strideH, grad_k.stride(2));
+    ASSIGN_CHECK_OVERFLOW(p.gV_strideH, grad_v.stride(2));
+    p.gQKV_strideM_multiplier = grad_q.is_contiguous() ? 1 : 3;
+    TORCH_INTERNAL_ASSERT(p.gQ_strideM() == grad_q.stride(1));
+    TORCH_INTERNAL_ASSERT(p.gK_strideM() == grad_k.stride(1));
+    TORCH_INTERNAL_ASSERT(p.gV_strideM() == grad_v.stride(1));
+
+    ASSIGN_CHECK_OVERFLOW(p.q_strideB, query.stride(0));
+    ASSIGN_CHECK_OVERFLOW(p.k_strideB, key.stride(0));
+    ASSIGN_CHECK_OVERFLOW(p.v_strideB, value.stride(0));
+    ASSIGN_CHECK_OVERFLOW(p.q_strideM, query.stride(1));
+    ASSIGN_CHECK_OVERFLOW(p.k_strideM, key.stride(1));
+    ASSIGN_CHECK_OVERFLOW(p.v_strideM, value.stride(1));
+    ASSIGN_CHECK_OVERFLOW(p.q_strideH, query.stride(2));
+    ASSIGN_CHECK_OVERFLOW(p.k_strideH, key.stride(2));
+    ASSIGN_CHECK_OVERFLOW(p.v_strideH, value.stride(2));
+    // comment for test
+    ASSIGN_CHECK_OVERFLOW(p.delta_strideB, delta.stride(0));
+    ASSIGN_CHECK_OVERFLOW(p.delta_strideH, delta.stride(1));
+
+    if (bias.has_value()) {
+      CHECK_NOSPARSE_LASTCONTIGUOUS_CUDA((*bias));
+      TORCH_CHECK(
+          bias->scalar_type() == CutlassToAtenDtype<scalar_t>::atScalarType(),
+          "invalid dtype for bias - should match query's dtype");
+
+      p.bias_ptr = (scalar_t*)bias->data_ptr();
+
+      TORCH_CHECK(bias->dim() == 4, "Bias expected in BMHK format");
+      TORCH_CHECK(
+          bias->size(0) == query.size(0),
+          "attn_bias: wrong shape (batch dimension)");
+      TORCH_CHECK(
+          bias->size(1) == query.size(2),
+          "attn_bias: wrong shape (head dimension)");
+      TORCH_CHECK(
+          bias->size(2) == query.size(1),
+          "attn_bias: wrong shape (seqlenQ dimension)");
+      TORCH_CHECK(
+          bias->size(3) == key.size(1),
+          "attn_bias: wrong shape (seqlenKV dimension)");
+      TORCH_CHECK(
+          bias->stride(3) == 1,
+          "attn_bias: wrong alignment (last dimension must be contiguous)");
+      ASSIGN_CHECK_OVERFLOW(p.bias_strideB, bias->stride(0));
+      ASSIGN_CHECK_OVERFLOW(p.bias_strideH, bias->stride(1));
+      ASSIGN_CHECK_OVERFLOW(p.bias_strideM, bias->stride(2));
+
+      if (bias_requires_grad) {
+        p.grad_bias_ptr = (scalar_t*)grad_bias.data_ptr();
+
+        ASSIGN_CHECK_OVERFLOW(p.gB_strideB, grad_bias.stride(0));
+        ASSIGN_CHECK_OVERFLOW(p.gB_strideH, grad_bias.stride(1));
+        ASSIGN_CHECK_OVERFLOW(p.gB_strideM, grad_bias.stride(2));
+      }
+    }
+
+    if (use_dropout) {
+      p.rng_engine_inputs = rng_engine_inputs;
+      p.dropout_prob = dropout_p;
+    }
+#ifdef DEBUG
+    std::cout << "[DEBUG] Backward_fa2: attention_backward_generic.ci debug_point 2"<< std::endl;
+#endif
+    // Heuristic for finding optimal number of splits
+    auto parallelism_without_split_key =
+        p.getBlocksGrid().x * p.getBlocksGrid().y * p.getBlocksGrid().z;
+    p.num_splits_key = cutlass::ceil_div(p.num_keys, Kernel::kBlockSizeJ);
+    // if (num_splits_key.has_value()) {
+    //   p.num_splits_key =
+    //       std::min<int64_t>(p.num_splits_key, num_splits_key.value());
+    // } else {
+    //   // Keys splitting heuristic
+
+    //   // If we already have enough parallelism, split-keys can help
+    //   // better use L2 cache.
+    //   // This is negligible when the seqlen is too small tho
+    //   if (parallelism_without_split_key >= 256 &&
+    //       p.num_keys <= 2 * Kernel::kBlockSizeJ) {
+    //     p.num_splits_key = 1;
+    //   }
+    //   // Increasing `split_keys` leads to using more gmem for temporary storage
+    //   // when we need a staging area for gK/gV. let's avoid that
+
+    //   // comment for test
+    //   if (Kernel::kNeedsAccumGradK || Kernel::kNeedsAccumGradV) {
+    //     p.num_splits_key = std::min(
+    //         int(p.num_splits_key), 200 / (p.num_batches * p.num_heads));
+    //   }
+    // }
+    // // comment&modify for test
+    // if (!Kernel::kEnableSplitKeys || p.num_splits_key < 1) {
+    //   p.num_splits_key = 1;
+    // }
+
+#ifdef DEBUG
+    std::cout << "[DEBUG] Backward_fa2: attention_backward_generic.ci debug_point 3"<< std::endl;
+#endif
+    auto& ctx = at::globalContext();
+    if (ctx.deterministicAlgorithms()) {
+      if (ctx.deterministicAlgorithmsWarnOnly()) {
+        TORCH_WARN_ONCE(
+            "Memory Efficient attention defaults to a non-deterministic algorithm. ",
+            "To explicitly enable determinism call torch.use_deterministic_algorithms(True, warn_only=False).");
+      } else {
+        TORCH_CHECK(
+            num_splits_key.value_or(1) <= 1,
+            "Using `num_splits_key > 1` makes the algorithm non-deterministic, and pytorch's deterministic mode is enabled");
+        p.num_splits_key = 1;
+      }
+    }
+    int64_t size_bytes = p.workspace_size();
+    if (size_bytes) {
+      workspace =
+          at::empty({size_bytes}, query.options().dtype(at::ScalarType::Byte));
+      p.workspace = (float*)workspace.data_ptr();
+      if (p.should_zero_workspace()) {
+        workspace.zero_();
+      }
+    }
+
+    // Handle the edge-cases where some tensors are empty
+    if (p.num_queries == 0 || p.num_keys == 0 || p.num_batches == 0 ||
+        p.num_heads == 0) {
+      grad_k.zero_();
+      grad_v.zero_();
+      grad_q.zero_();
+      return;
+    }
+    Kernel::check_supported(p);
+#ifdef DEBUG
+    std::cout << "[DEBUG] Backward_fa2: attention_backward_generic.ci debug_point 4"<< std::endl;
+#endif
+    if (smem_bytes > 0xc000) {
+      // https://docs.nvidia.com/cuda/cuda-c-programming-guide/#features-and-technical-specifications-technical-specifications-per-compute-capability
+      auto err = cudaFuncSetAttribute(
+          kernel_fn, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_bytes);
+      TORCH_CHECK(
+          err != cudaErrorInvalidValue,
+          "This GPU does not have enough shared-memory (kernel requires ",
+          smem_bytes / 1024,
+          " kb)");
+      AT_CUDA_CHECK(err);
+    }
+
+    // second syntax resulted in the error below on windows
+    // error C3495: 'kernel_fn': a simple capture must be a variable
+    // with automatic storage duration declared
+    // in the reaching scope of the lambda
+#ifdef _WIN32
+    cudaFuncAttributes attr;
+    AT_CUDA_CHECK(cudaFuncGetAttributes(&attr, kernel_fn));
+    TORCH_INTERNAL_ASSERT(
+        attr.binaryVersion >= Kernel::ArchTag::kMinComputeCapability,
+        "Something went wrong in the build process");
+#else
+    auto checkBinaryArchMatches = [&]() {
+      cudaFuncAttributes attr;
+      AT_CUDA_CHECK(cudaFuncGetAttributes(&attr, kernel_fn));
+      return attr.binaryVersion >= Kernel::ArchTag::kMinComputeCapability;
+    };
+    TORCH_INTERNAL_ASSERT(
+        checkBinaryArchMatches(), "Something went wrong in the build process");
+#endif
+#ifdef DEBUG
+    std::cout << "[DEBUG] Backward_fa2: attention_backward_generic.ci -- Ready to launch kernel"<< std::endl;
+    p.printKernelInfo(reinterpret_cast<const void*>(kernel_fn), true);
+#endif
+
+    // compute delta_ptr
+    auto kernel_dov = attention_kernel_backward_dov<Kernel>;
+    kernel_dov<<<p.getBlocksGridDq(), p.getThreadsGrid(), 0, stream>>>(p);
+    
+    // main kernel: attention_kernel_backward_batched_impl_v2 called in kernel_fn
+    AT_CUDA_CHECK(cudaFuncSetAttribute(kernel_fn, cudaFuncAttributeMaxDynamicSharedMemorySize, int(smem_bytes)));
+    kernel_fn<<<p.getBlocksGrid(), p.getThreadsGrid(), smem_bytes, stream>>>(p);
+
+    char *pEnv = std::getenv("PPU_FLASH_ATTENTION_SHOW_PARAMS");
+    if (pEnv && isdigit(*pEnv)) {
+        int value = std::stoi(std::string(pEnv));
+        if (int(std::stoi(std::string(pEnv)) == 1))
+            p.printKernelInfo(reinterpret_cast<const void*>(kernel_fn));
+    }
+
+    // convert dq from tf32 -> fp16
+    auto kernel_convert_fn = attention_kernel_backward_convert_dq<Kernel>;
+    AT_CUDA_CHECK(cudaFuncSetAttribute(kernel_convert_fn, cudaFuncAttributeMaxDynamicSharedMemorySize, int(smem_bytes)));
+    kernel_convert_fn<<<p.getBlocksGridDq(), p.getThreadsGrid(), smem_bytes, stream>>>(p);
+
+#ifdef DEBUG
+    std::cout << "[DEBUG] Backward_fa2: attention_backward_generic.ci -- Launch Success"<< std::endl;
+#endif
+  };
+  int max_headDim = std::max(query.size(3), std::max(key.size(3), value.size(3)));
+  if(query.dtype() == at::ScalarType::Float || max_headDim > 256){
+    DISPATCH_TYPES(query, ([&]() {
+                   dispatch_cutlassB_fa1<scalar_t>(launchKernel_fa1, computeCapability);
                  }));
+  }
+  else{
+    DISPATCH_TYPES(query, ([&]() {
+                   dispatch_cutlassB_fa2<scalar_t>(launchKernel_fa2, computeCapability);
+                 }));
+  }
+  
   TORCH_CHECK(kernel_launched, "cutlassB: no kernel found to launch!");
   AT_CUDA_CHECK(cudaGetLastError());
   return std::make_tuple(
@@ -480,12 +927,12 @@ bool has_cutlassB_kernel_for(
     found = true;
   };
   if (dtype == at::ScalarType::Float) {
-    dispatch_cutlassB<float>(callback, cc);
+    dispatch_cutlassB_fa1<float>(callback, cc);
   } else if (dtype == at::ScalarType::Half) {
-    dispatch_cutlassB<cutlass::half_t>(callback, cc);
+    dispatch_cutlassB_fa2<cutlass::half_t>(callback, cc);
   } else {
     TORCH_CHECK(dtype == at::ScalarType::BFloat16, "Valid data type");
-    dispatch_cutlassB<cutlass::bfloat16_t>(callback, cc);
+    dispatch_cutlassB_fa2<cutlass::bfloat16_t>(callback, cc);
   }
   return found;
 }
@@ -522,12 +969,15 @@ IterationDataOutput _cutlassB_iteration_data(
     p.num_queries = num_queries;
     p.num_keys = num_keys;
     p.num_splits_key = num_splits_key;
-    p.window_size = window_size;
+    // p.window_size = window_size;
     p.custom_mask_type = custom_mask_type;
 
     int32_t new_query_start, new_key_start, num_parallel_blocks,
         smallest_query_for_key;
+
+    // comment for test
     num_parallel_blocks = Kernel::getNumParallelBlocksForQuery(p, query_start);
+    // num_parallel_blocks = 8;
     smallest_query_for_key = Kernel::getSmallestQueryForKey(p, key_start);
     Kernel::incrIteration(
         p, query_start, key_start, new_query_start, new_key_start);
@@ -540,24 +990,28 @@ IterationDataOutput _cutlassB_iteration_data(
         int64_t(num_parallel_blocks));
   };
   if (dtype == at::ScalarType::Float) {
-    dispatch_cutlassB<float>(callback, cc);
+    dispatch_cutlassB_fa1<float>(callback, cc);
   } else if (dtype == at::ScalarType::Half) {
-    dispatch_cutlassB<cutlass::half_t>(callback, cc);
+    dispatch_cutlassB_fa2<cutlass::half_t>(callback, cc);
   } else {
     TORCH_CHECK(dtype == at::ScalarType::BFloat16, "Valid data type");
-    dispatch_cutlassB<cutlass::bfloat16_t>(callback, cc);
+    dispatch_cutlassB_fa2<cutlass::bfloat16_t>(callback, cc);
   }
   TORCH_CHECK(found, "No kernel found");
   return output;
 }
-} // namespace
+// } // namespace
 
+// Enable xformers operator registration when building via xformers setup.py
+// By default (building through PyTorch), this is disabled
+#if defined(XFORMERS_ENABLE_ATTENTION_OPS)
 TORCH_LIBRARY_IMPL(xformers, CUDA, m) {
   m.impl(
       TORCH_SELECTIVE_NAME("xformers::efficient_attention_backward_cutlass"),
       TORCH_FN(mem_efficient_attention_backward_cutlass));
 }
-
+#endif
+#if 0
 TORCH_LIBRARY_FRAGMENT(xformers, m) {
   m.def(TORCH_SELECTIVE_SCHEMA(
       "xformers::_has_cutlassB_kernel_for(ScalarType dtype, int cc, int maxShmem, int maxK) -> bool"));
@@ -573,3 +1027,4 @@ TORCH_LIBRARY_FRAGMENT(xformers, m) {
       TORCH_SELECTIVE_NAME("xformers::_cutlassB_iteration_data"),
       TORCH_FN(_cutlassB_iteration_data));
 }
+#endif

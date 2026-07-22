@@ -10,6 +10,7 @@ from torch.utils import benchmark
 
 from xformers.components.attention.utils import iterative_pinv
 
+
 MIN_RUN_TIME = 1
 SHAPES = [[8, 8], [256, 1024], [128, 256]]
 SPARSITIES = [0.5, 0.8, 0.9, 0.95, 0.99]
@@ -67,7 +68,6 @@ def iterative_pinv_analysis(
     max_iters: int = 30,
     plot: bool = True,
 ):
-
     for i in range(1, 10):
         B, M = 1, 2**i
         a = torch.rand(B, M, M)

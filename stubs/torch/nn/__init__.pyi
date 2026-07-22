@@ -9,19 +9,18 @@ from typing import (
     Generic,
     Iterable,
     Iterator,
-    List,
     Optional,
-    Tuple,
-    Type,
+    overload,
+    TypeAlias,
     TypeVar,
     Union,
-    overload,
 )
+from typing_extensions import Literal as L, Self
+
+from pyre_extensions import Add, Multiply, Subtract, TypeVarTuple, Unpack
 
 import torch
-from pyre_extensions import Add, Divide, Multiply, Subtract, TypeVarTuple, Unpack
 from torch import Tensor
-from typing_extensions import Literal as L
 
 DType = TypeVar("DType")
 T = TypeVar("T")
@@ -38,8 +37,8 @@ W = TypeVar("W", bound=int)
 class Module:
     def __call__(self, *args: Any, **kwargs: Any) -> Any: ...
     def parameters(self) -> Iterator[Any]: ...
-    def double(self: T) -> T: ...
-    def to(self, dtype: Type[T], device: torch._device = ...) -> Module: ...
+    def double(self) -> Self: ...
+    def to(self, dtype: type[T], device: torch._device = ...) -> Module: ...
     def eval(self) -> Module: ...
     def train(self, mode: bool) -> Module: ...
     def register_parameter(self, name: str, param: Optional[Parameter]) -> None: ...
@@ -53,10 +52,10 @@ class LSTMCell(Module, Generic[InputSize, HiddenSize]):
     def __call__(
         self,
         input: Tensor[DType, Batch, InputSize],
-        hidden: Tuple[
+        hidden: tuple[
             Tensor[DType, Batch, HiddenSize], Tensor[DType, Batch, HiddenSize]
         ] = ...,
-    ) -> Tuple[Tensor[DType, Batch, HiddenSize], Tensor[DType, Batch, HiddenSize]]: ...
+    ) -> tuple[Tensor[DType, Batch, HiddenSize], Tensor[DType, Batch, HiddenSize]]: ...
 
 class Linear(Module, Generic[InputSize, OutputSize]):
     def __init__(
@@ -103,8 +102,8 @@ class Conv2d(
         self,
         in_channels: InChannels,
         out_channels: OutChannels,
-        kernel_size: Tuple[KernelSize1, KernelSize2],
-        padding: Tuple[Padding1, Padding2],
+        kernel_size: tuple[KernelSize1, KernelSize2],
+        padding: tuple[Padding1, Padding2],
         bias: bool = ...,
     ) -> None: ...
     def __call__(
@@ -206,7 +205,7 @@ class Embedding(Module, Generic[N, EmbeddingDimension]):
         self, x: Tensor[DType, Unpack[Ts]]
     ) -> Tensor[DType, Unpack[Ts], EmbeddingDimension]: ...
 
-_shape_t = Union[int, List[int], Tuple[Any, ...]]
+_shape_t: TypeAlias = Union[int, list[int], tuple[Any, ...]]
 
 class LayerNorm(Module):
     def __init__(
@@ -224,12 +223,12 @@ class AdaptiveAvgPool2d(Module, Generic[H, W]):
     @overload
     def __new__(
         self,
-        output_size: Tuple[N, L[None]],
+        output_size: tuple[N, L[None]],
     ) -> AdaptiveAvgPool2d[N, L[-1]]: ...
     @overload
     def __new__(
         self,
-        output_size: Tuple[L[None], N],
+        output_size: tuple[L[None], N],
     ) -> AdaptiveAvgPool2d[L[-1], N]: ...
     @overload
     def __new__(
@@ -239,7 +238,7 @@ class AdaptiveAvgPool2d(Module, Generic[H, W]):
     @overload
     def __new__(
         self,
-        output_size: Tuple[H, W],
+        output_size: tuple[H, W],
     ) -> AdaptiveAvgPool2d[H, W]: ...
     def forward(self, x: Tensor[DType, Unpack[Ts]]) -> Tensor[DType, Unpack[Ts]]: ...
     @overload

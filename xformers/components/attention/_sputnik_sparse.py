@@ -5,7 +5,6 @@
 
 
 import torch
-
 from xformers.ops import masked_matmul
 from xformers.sparse import SparseCSRTensor
 

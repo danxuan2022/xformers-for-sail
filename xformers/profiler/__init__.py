@@ -7,6 +7,7 @@ from .api import profile, step
 from .profiler import MemSnapshotsProfiler, NsightProfiler, PyTorchProfiler
 from .slow_ops_profiler import DetectSlowOpsProfiler
 
+
 __all__ = [
     "profile",
     "step",

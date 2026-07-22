@@ -20,11 +20,11 @@
 
 #pragma once
 
-#include "cutlass/gemm/threadblock/default_mma.h"
-#include "cutlass/gemm/threadblock/default_mma_core_simt.h"
-#include "cutlass/gemm/threadblock/default_mma_core_sm70.h"
-#include "cutlass/gemm/threadblock/default_mma_core_sm75.h"
-#include "cutlass/gemm/threadblock/default_mma_core_sm80.h"
+#include "cutlass2/gemm/threadblock/default_mma.h"
+#include "cutlass2/gemm/threadblock/default_mma_core_simt.h"
+#include "cutlass2/gemm/threadblock/default_mma_core_sm70.h"
+#include "cutlass2/gemm/threadblock/default_mma_core_sm75.h"
+#include "cutlass2/gemm/threadblock/default_mma_core_sm80.h"
 
 namespace cutlass {
 namespace gemm {

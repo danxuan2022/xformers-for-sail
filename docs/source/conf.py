@@ -20,12 +20,13 @@
 import os
 import sys
 from pathlib import Path
-from typing import Any, List
+from typing import Any
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
 from recommonmark.transform import AutoStructify
+
 
 sys.path.insert(0, os.path.abspath("../.."))
 
@@ -86,7 +87,7 @@ templates_path = ["_templates"]
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns: List[Any] = []
+exclude_patterns: list[Any] = []
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:

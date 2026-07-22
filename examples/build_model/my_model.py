@@ -5,7 +5,6 @@
 
 import hydra
 from omegaconf import DictConfig
-
 from xformers.factory.hydra_helper import import_xformer_config_schema
 
 

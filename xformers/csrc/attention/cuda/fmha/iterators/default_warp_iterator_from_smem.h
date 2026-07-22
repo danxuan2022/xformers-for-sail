@@ -37,9 +37,9 @@
 
 #pragma once
 
-#include "cutlass/cutlass.h"
-#include "cutlass/gemm/warp/mma_tensor_op_tile_access_iterator.h"
-#include "cutlass/platform/platform.h"
+#include "cutlass2/cutlass.h"
+#include "cutlass2/gemm/warp/mma_tensor_op_tile_access_iterator.h"
+#include "cutlass2/platform/platform.h"
 
 #include "warp_iterator_from_smem.h"
 

@@ -5,12 +5,12 @@
 
 
 import os
-from typing import List, Optional
+from typing import Optional
+from typing_extensions import Annotated
 
 import torch
 import torch.multiprocessing.reductions
 from torch.utils._pytree import tree_flatten, tree_unflatten
-from typing_extensions import Annotated
 
 from .. import _is_triton_available
 from .common import Alias, make_pytorch_operator_for_dispatch_key
@@ -39,10 +39,10 @@ def _should_use_triton(device: torch.device, dtype: torch.dtype) -> bool:
 # See: https://github.com/pytorch/pytorch/issues/113022
 @make_pytorch_operator_for_dispatch_key("")
 def tiled_matmul_fwd(
-    a: List[List[torch.Tensor]],
-    b: List[List[torch.Tensor]],
-    out: Optional[List[List[Annotated[torch.Tensor, Alias("a", write=True)]]]] = None,
-) -> List[List[Annotated[torch.Tensor, Alias("a", write=True)]]]:
+    a: list[list[torch.Tensor]],
+    b: list[list[torch.Tensor]],
+    out: Optional[list[list[Annotated[torch.Tensor, Alias("a", write=True)]]]] = None,
+) -> list[list[Annotated[torch.Tensor, Alias("a", write=True)]]]:
     assert len(a) >= 1 and len(a[0]) >= 1 and all(len(row) == len(a[0]) for row in a), (
         "the first operand must be a non-empty two-dimensional regular list of lists "
         "of tenors"
@@ -161,7 +161,7 @@ def tiled_matmul_fwd(
     return c
 
 
-def _transpose(x: List[List[torch.Tensor]]) -> List[List[torch.Tensor]]:
+def _transpose(x: list[list[torch.Tensor]]) -> list[list[torch.Tensor]]:
     return [[t.t() for t in y] for y in zip(*x)]
 
 
@@ -191,9 +191,9 @@ class _TiledMatmul(torch.autograd.Function):
 
 
 def tiled_matmul(
-    a: List[List[torch.Tensor]],
-    b: List[List[torch.Tensor]],
-) -> List[List[torch.Tensor]]:
+    a: list[list[torch.Tensor]],
+    b: list[list[torch.Tensor]],
+) -> list[list[torch.Tensor]]:
     """Multiply two matrices given as grids of tiles
 
     It performs the matmul between A and B, which are given as two-dimensional

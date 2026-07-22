@@ -4,13 +4,14 @@
 # LICENSE file in the root directory of this source tree.
 
 from functools import wraps
-from typing import List, Optional, Tuple
+from typing import Optional
 
 import numpy as np
 import pytest
+from xformers.attn_bias_utils import ref_attention, ref_attention_bmhk
+
 import torch
 
-from xformers.attn_bias_utils import ref_attention, ref_attention_bmhk
 
 cuda_only = pytest.mark.skipif(not torch.cuda.is_available(), reason="requires CUDA")
 rocm_only = pytest.mark.skipif(
@@ -72,16 +73,16 @@ def assert_allclose(
         f"{msg}: "
         f"out={out.flatten()[max_pos]} and ref={ref.flatten()[max_pos]} (diff={max_diff} > 0)"
         f" at {max_location} of shape {tuple(out.shape)} / atol={atol}, rtol={rtol}"
-        f"/ total failing elements: {num_different} ({percentage*100:.3}%)"
+        f"/ total failing elements: {num_different} ({percentage * 100:.3}%)"
     )
 
 
 def pack_kv_cache(
     cache_k: torch.Tensor,
     cache_v: torch.Tensor,
-    kv_seqlens: List[int],
+    kv_seqlens: list[int],
     BLOCK_N: int,
-) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """
     Create block tables and pages K/V cache for testing paged attention.
     Args:

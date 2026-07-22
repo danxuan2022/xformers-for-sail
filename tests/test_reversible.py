@@ -6,9 +6,10 @@
 import random
 
 import pytest
+from xformers.factory.model_factory import xFormer, xFormerConfig
+
 import torch
 
-from xformers.factory.model_factory import xFormer, xFormerConfig
 
 BATCH = 2
 SEQ = 64
@@ -112,7 +113,6 @@ def _rev_config(config, flag: bool):
 @pytest.mark.parametrize("config", _test_configs)
 @pytest.mark.parametrize("device", DEVICES)
 def test_reversible_runs(config, device):
-
     # Build both a reversible and non-reversible model
     model_non_reversible = xFormer.from_config(
         xFormerConfig(_rev_config(config, False))
@@ -129,7 +129,6 @@ def test_reversible_runs(config, device):
 
 @pytest.mark.parametrize("device", DEVICES)
 def test_reversible_no_alternate(device):
-
     # Check that we cannot build a non-coherent stack
     with pytest.raises(AssertionError):
         rev = dict(_test_config_encoder)  # we need to make a copy

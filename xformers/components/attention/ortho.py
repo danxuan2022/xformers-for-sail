@@ -25,6 +25,7 @@ from xformers.components.attention.core import (
     scaled_query_key_softmax,
 )
 
+
 logger = logging.getLogger("xformers")
 
 

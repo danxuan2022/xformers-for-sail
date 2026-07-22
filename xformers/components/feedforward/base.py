@@ -6,11 +6,12 @@
 
 from abc import ABCMeta, abstractmethod
 from dataclasses import asdict, dataclass
-from typing import Optional, Type, TypeVar
+from typing import Optional, TypeVar
 
 import torch.nn as nn
 
 from xformers.components import Activation
+
 
 Self = TypeVar("Self", bound="Feedforward")
 
@@ -43,7 +44,7 @@ class Feedforward(nn.Module, metaclass=ABCMeta):
         self.requires_squared_context = False
 
     @classmethod
-    def from_config(cls: Type[Self], config: FeedforwardConfig) -> Self:
+    def from_config(cls: type[Self], config: FeedforwardConfig) -> Self:
         # Generate the class inputs from the config
         fields = asdict(config)
 

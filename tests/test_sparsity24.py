@@ -8,15 +8,16 @@ import random
 from typing import cast
 
 import pytest
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-
 import xformers  # noqa: F401
 import xformers.ops as xops
 import xformers.ops.sp24 as sp24
 
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
 from .utils import assert_allclose
+
 
 cuda_only = pytest.mark.skipif(not torch.cuda.is_available(), reason="requires CUDA")
 compute_capability = (0, 0)
@@ -345,9 +346,7 @@ def test_pack_meta_shuffle(transpose: bool) -> None:
     def expect_match(i, j, line):
         value = final_meta[i][j][0]
         expected = pack(line)
-        assert (
-            value == expected
-        ), f"""value: 0x{value:02x} (expected: 0x{expected:02x})
+        assert value == expected, f"""value: 0x{value:02x} (expected: 0x{expected:02x})
 {meta_str(local_meta[0, 0, :4])} (T0) |||| {meta_str(local_meta[0, 1, :4])} (T4)
 {meta_str(local_meta[1, 0, :4])} (T1) |||| {meta_str(local_meta[1, 1, :4])} (T5)
 """
@@ -409,16 +408,16 @@ def test_pack_both_ways_id(dtype) -> None:
     # Test A@B
     pack_gemm = torch.ops.xformers._sparse24_gemm(packed, b, meta)
     max_diff = (ref_gemm - pack_gemm).abs().argmax()
-    assert torch.allclose(
-        ref_gemm, pack_gemm
-    ), f"packed is wrong at pos: ({max_diff // N}, {max_diff % N})"
+    assert torch.allclose(ref_gemm, pack_gemm), (
+        f"packed is wrong at pos: ({max_diff // N}, {max_diff % N})"
+    )
     # Test A.t@B
     pack_gemm = torch.ops.xformers._sparse24_gemm(packed_t, b, meta_t)
     pack_gemm = pack_gemm.transpose(0, 1)
     max_diff = (ref_gemm - pack_gemm).abs().argmax()
-    assert torch.allclose(
-        ref_gemm, pack_gemm
-    ), f"packed_t is wrong at pos: ({max_diff // N}, {max_diff % N})"
+    assert torch.allclose(ref_gemm, pack_gemm), (
+        f"packed_t is wrong at pos: ({max_diff // N}, {max_diff % N})"
+    )
 
 
 @cuda_only
@@ -755,15 +754,17 @@ class LinearW24(torch.nn.Linear):
             gradient="24dense",
             backend="cusparselt",
         )
-        return F.linear(input, w_sparse, self.bias,)[
-            :dim0
-        ].unflatten(dim=0, sizes=input_shape[:-1])
+        return F.linear(
+            input,
+            w_sparse,
+            self.bias,
+        )[:dim0].unflatten(dim=0, sizes=input_shape[:-1])
 
 
 # XXX: This is needed to avoid a CUDA internal error
 # See the issue here:
 # https://github.com/pytorch/pytorch/issues/113776
-@functools.lru_cache()
+@functools.lru_cache
 def _workaround_cusparselt_internal_error() -> None:
     x0 = torch.randn([128, 128], device="cuda", dtype=torch.float16, requires_grad=True)
     m = LinearW24(128, 128, bias=False).cuda().to(torch.float16)

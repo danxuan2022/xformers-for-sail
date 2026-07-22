@@ -9,6 +9,7 @@ import tempfile
 
 import torch
 
+
 is_windows = False
 if sys.platform == "win32":  # pytorch on windows uses gloo not ncll
     is_windows = True

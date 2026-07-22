@@ -3,7 +3,7 @@
 # This source code is licensed under the BSD license found in the
 # LICENSE file in the root directory of this source tree.
 
-from typing import Any, Iterable, List, Optional, Tuple
+from typing import Any, Iterable, Optional
 
 import torch
 
@@ -11,15 +11,14 @@ from xformers.ops.common import get_xformers_operator, register_operator
 from xformers.ops.fmha.attn_bias import BlockDiagonalCausalWithOffsetPaddedKeysMask
 from xformers.ops.fmha.common import (
     AttentionFwOpBase,
+    check_lastdim_alignment_stride1,
     Context,
     Inputs,
-    check_lastdim_alignment_stride1,
 )
 
 
 @register_operator
 class FwOp(AttentionFwOpBase):
-
     OPERATOR = get_xformers_operator("efficient_attention_forward_decoder_splitk_ck")
     SUPPORTED_DEVICES = {"cuda"}
     SUPPORTED_DTYPES = {
@@ -46,14 +45,14 @@ class FwOp(AttentionFwOpBase):
     @classmethod
     def shape_not_supported_reasons(
         cls, Mq: int, Mkv: int, K: int, Kv: int
-    ) -> List[str]:
+    ) -> list[str]:
         reasons = super().shape_not_supported_reasons(Mq, Mkv, K, Kv)
         # if K not in {16, 32, 64, 128}:
         #     reasons.append(f"Embed dim {K} not supported")
         return reasons
 
     @classmethod
-    def not_supported_reasons(cls, d: Inputs) -> List[str]:
+    def not_supported_reasons(cls, d: Inputs) -> list[str]:
         reasons = super(FwOp, cls).not_supported_reasons(d)
         check_lastdim_alignment_stride1(reasons, "query", d.query, 8)
         if d.key.dtype != torch.int32:
@@ -106,7 +105,7 @@ class FwOp(AttentionFwOpBase):
     @classmethod
     def apply(
         cls, inp: Inputs, needs_gradient: bool
-    ) -> Tuple[torch.Tensor, Optional[Context]]:
+    ) -> tuple[torch.Tensor, Optional[Context]]:
         attn_bias = inp.attn_bias
         q, k, v = inp.get_qkv_in_bmghk()
 

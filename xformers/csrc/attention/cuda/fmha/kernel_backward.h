@@ -21,37 +21,37 @@
 #include <ATen/cuda/CUDAGraphsUtils.cuh>
 #endif
 
-#include "cutlass/cutlass.h"
-#include "cutlass/epilogue/thread/linear_combination.h"
-#include "cutlass/epilogue/thread/scale_type.h"
-#include "cutlass/fast_math.h"
-#include "cutlass/functional.h"
-#include "cutlass/gemm/gemm.h"
-#include "cutlass/layout/matrix.h"
-#include "cutlass/layout/vector.h"
-#include "cutlass/numeric_conversion.h"
-#include "cutlass/numeric_types.h"
-#include "cutlass/tensor_ref.h"
+#include "cutlass2/cutlass.h"
+#include "cutlass2/epilogue/thread/linear_combination.h"
+#include "cutlass2/epilogue/thread/scale_type.h"
+#include "cutlass2/fast_math.h"
+#include "cutlass2/functional.h"
+#include "cutlass2/gemm/gemm.h"
+#include "cutlass2/layout/matrix.h"
+#include "cutlass2/layout/vector.h"
+#include "cutlass2/numeric_conversion.h"
+#include "cutlass2/numeric_types.h"
+#include "cutlass2/tensor_ref.h"
 
 #include "debug_utils.h"
 #include "gemm_kernel_utils.h"
 
-#include "cutlass/epilogue/thread/linear_combination_relu.h"
-#include "cutlass/epilogue/threadblock/epilogue_smem_accumulator.h"
-#include "cutlass/epilogue/warp/fragment_iterator_tensor_op.h"
-#include "cutlass/epilogue/warp/tile_iterator_tensor_op.h"
-#include "cutlass/gemm/device/default_gemm_configuration.h"
-#include "cutlass/gemm/kernel/default_gemm.h"
-#include "cutlass/gemm/threadblock/default_mma.h"
-#include "cutlass/gemm/threadblock/default_mma_core_simt.h"
-#include "cutlass/gemm/threadblock/default_mma_core_sm70.h"
-#include "cutlass/gemm/threadblock/default_mma_core_sm75.h"
-#include "cutlass/gemm/threadblock/default_mma_core_sm80.h"
-#include "cutlass/integer_subbyte.h"
-#include "cutlass/matrix_shape.h"
-#include "cutlass/platform/platform.h"
-#include "cutlass/transform/threadblock/predicated_tile_iterator.h"
-#include "cutlass/transform/threadblock/vector_iterator.h"
+#include "cutlass2/epilogue/thread/linear_combination_relu.h"
+#include "cutlass2/epilogue/threadblock/epilogue_smem_accumulator.h"
+#include "cutlass2/epilogue/warp/fragment_iterator_tensor_op.h"
+#include "cutlass2/epilogue/warp/tile_iterator_tensor_op.h"
+#include "cutlass2/gemm/device/default_gemm_configuration.h"
+#include "cutlass2/gemm/kernel/default_gemm.h"
+#include "cutlass2/gemm/threadblock/default_mma.h"
+#include "cutlass2/gemm/threadblock/default_mma_core_simt.h"
+#include "cutlass2/gemm/threadblock/default_mma_core_sm70.h"
+#include "cutlass2/gemm/threadblock/default_mma_core_sm75.h"
+#include "cutlass2/gemm/threadblock/default_mma_core_sm80.h"
+#include "cutlass2/integer_subbyte.h"
+#include "cutlass2/matrix_shape.h"
+#include "cutlass2/platform/platform.h"
+#include "cutlass2/transform/threadblock/predicated_tile_iterator.h"
+#include "cutlass2/transform/threadblock/vector_iterator.h"
 #include "epilogue/epilogue_pipelined.h"
 #include "iterators/epilogue_predicated_tile_iterator.h"
 
@@ -2396,7 +2396,7 @@ struct AttentionBackwardKernel {
         thread_id,
         cutlass::MatrixCoord{0, 0});
 
-    typename MatmulQK::Mma::IteratorB iterator_B(
+    MatmulQK::Mma::template prologue<kReloadK, true>(
         {int32_t(p.q_strideM)},
         p.query_ptr + query_start * p.q_strideM,
         {p.head_dim, p.num_queries - query_start},

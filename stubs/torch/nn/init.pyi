@@ -3,16 +3,16 @@
 # This source code is licensed under the BSD license found in the
 # LICENSE file in the root directory of this source tree.
 
-from typing import Tuple, TypeVar
+from typing import TypeVar
 
-import torch
 from pyre_extensions import TypeVarTuple, Unpack
+
 from torch import Tensor
 
 Ts = TypeVarTuple("Ts")
 DType = TypeVar("DType")
 
-def _calculate_fan_in_and_fan_out(tensor: Tensor) -> Tuple[int, int]: ...
+def _calculate_fan_in_and_fan_out(tensor: Tensor) -> tuple[int, int]: ...
 def constant_(
     tensor: Tensor[DType, Unpack[Ts]], val: float
 ) -> Tensor[DType, Unpack[Ts]]: ...

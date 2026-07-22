@@ -45,8 +45,8 @@
 
 #pragma once
 
-#include "cutlass/arch/memory.h"
-#include "cutlass/transform/threadblock/predicated_tile_access_iterator.h"
+#include "cutlass2/arch/memory.h"
+#include "cutlass2/transform/threadblock/predicated_tile_access_iterator.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 

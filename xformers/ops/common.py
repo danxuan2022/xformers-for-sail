@@ -6,10 +6,10 @@
 import inspect
 from dataclasses import dataclass
 from functools import wraps
-from typing import Any, Callable, Dict, List, Type, TypeVar, Union
+from typing import Any, Callable, TypeVar, Union
+from typing_extensions import Annotated, get_args, get_origin
 
 import torch
-from typing_extensions import Annotated, get_args, get_origin
 
 
 def get_operator(library: str, name: str):
@@ -49,8 +49,8 @@ class BaseOperator:
         return -1
 
 
-OPERATORS_REGISTRY: List[Type[BaseOperator]] = []
-FUNC_TO_XFORMERS_OPERATOR: Dict[Any, Type[BaseOperator]] = {}
+OPERATORS_REGISTRY: list[type[BaseOperator]] = []
+FUNC_TO_XFORMERS_OPERATOR: dict[Any, type[BaseOperator]] = {}
 
 ClsT = TypeVar("ClsT")
 
@@ -97,7 +97,9 @@ def turn_into_pytorch_op(fn: ClsT, dispatch_key: str) -> ClsT:
         # Optional[T] is an alias for Union[T, None]
         if get_origin(annotation) is Union:
             inner_types = [
-                t for t in get_args(annotation) if t is not type(None)  # noqa: E721
+                t
+                for t in get_args(annotation)
+                if t is not type(None)  # noqa: E721
             ]
             if len(inner_types) == 1:
                 return f"{render_arg_type(inner_types[0])}?"

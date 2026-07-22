@@ -5,9 +5,9 @@
 
 
 import pytest
-import torch
-
 from xformers.components import NormalizationType, PreNorm
+
+import torch
 
 
 class Passthrough(torch.nn.Module):

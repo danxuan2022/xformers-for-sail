@@ -13,6 +13,7 @@ import torch
 from xformers import _is_triton_available
 from xformers.components.attention import Attention, AttentionConfig, register_attention
 
+
 logger = logging.getLogger("xformers")
 
 
@@ -20,8 +21,10 @@ _is_blocksparse_available = _is_triton_available()
 
 
 if _is_blocksparse_available:
-    from triton.ops.blocksparse import matmul as blocksparse_matmul  # type: ignore
-    from triton.ops.blocksparse import softmax as blocksparse_softmax  # type: ignore
+    from triton.ops.blocksparse import (  # type: ignore
+        matmul as blocksparse_matmul,
+        softmax as blocksparse_softmax,
+    )
 
     @dataclass
     class BlockSparseAttentionConfig(AttentionConfig):
@@ -128,9 +131,9 @@ if _is_blocksparse_available:
             *args,
             **kwargs,
         ) -> torch.Tensor:
-            assert (
-                "att_mask" not in kwargs.keys() and "att_mask" not in args
-            ), "This attention does not support an attention mask, but you can specify causality."
+            assert "att_mask" not in kwargs.keys() and "att_mask" not in args, (
+                "This attention does not support an attention mask, but you can specify causality."
+            )
 
             r"""
             A thin wrap around the Triton blockparse attention operation
@@ -143,21 +146,19 @@ if _is_blocksparse_available:
             if not hasattr(self, "sparse_dot_sdd"):
                 self.create_triton_kernels(q.device)
 
-            assert (
-                q.shape[-2] == k.shape[-2]
-            ), "Blocksparse requires the same dimensions for K and Q for now"
+            assert q.shape[-2] == k.shape[-2], (
+                "Blocksparse requires the same dimensions for K and Q for now"
+            )
 
-            assert (
-                q.shape[-2] == self.layout.shape[-2] * self.block_size
-            ), "Actual sequence size and layout are inconsistent"
-            assert (
-                k.shape[-2] == self.layout.shape[-2] * self.block_size
-            ), "Actual sequence size and layout are inconsistent"
+            assert q.shape[-2] == self.layout.shape[-2] * self.block_size, (
+                "Actual sequence size and layout are inconsistent"
+            )
+            assert k.shape[-2] == self.layout.shape[-2] * self.block_size, (
+                "Actual sequence size and layout are inconsistent"
+            )
 
-            assert (
-                q.shape[-2] % self.block_size
-            ) == 0, "Sequence length {}  must be a multiple of block size {}".format(
-                q.shape[-2], self.block_size
+            assert (q.shape[-2] % self.block_size) == 0, (
+                f"Sequence length {q.shape[-2]}  must be a multiple of block size {self.block_size}"
             )
 
             # Self-attend: (B, nh, S, hs) x (B, nh, hs, S) -> (B, nh, S, S)

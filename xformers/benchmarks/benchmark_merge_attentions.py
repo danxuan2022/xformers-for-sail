@@ -4,7 +4,6 @@
 # LICENSE file in the root directory of this source tree.
 
 import torch
-
 from xformers.ops import fmha
 from xformers.utils import do_bench_cudagraph
 
@@ -39,7 +38,6 @@ def benchmark_merge_attentions_backward(split_k, B, M, G, N_H_L, D_H, dtype):
 
     bench_stream = torch.cuda.Stream()
     with torch.cuda.stream(bench_stream):
-
         attn_split = [
             torch.randn(
                 [B, M, G, N_H_L, D_H], dtype=dtype, device="cuda", requires_grad=True
@@ -73,7 +71,7 @@ def benchmark_merge_attentions_backward(split_k, B, M, G, N_H_L, D_H, dtype):
         print(
             f"{split_k=}, {B=}, {M=}, {G=}, {N_H_L=}, {D_H=}, {dtype=}. "
             f"Baseline: {t_ms_ref * 1e3:.2f}us, "
-            f"Triton: {t_ms * 1e3:.2f}us, {t_ms_ref/t_ms:.1f}x faster"
+            f"Triton: {t_ms * 1e3:.2f}us, {t_ms_ref / t_ms:.1f}x faster"
         )
 
 

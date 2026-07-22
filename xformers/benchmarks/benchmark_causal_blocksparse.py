@@ -5,14 +5,15 @@
 
 
 import os
-from typing import Any, Dict
+from typing import Any
 
-import torch
 import triton
 
-from xformers.benchmarks.utils import TestCase, pretty_plot, pretty_print
+import torch
+from xformers.benchmarks.utils import pretty_plot, pretty_print, TestCase
 from xformers.components.attention.attention_mask import AttentionMask
 from xformers.components.attention.core import scaled_dot_product_attention
+
 
 os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 
@@ -38,8 +39,8 @@ def bench_blocksparse_compare(backward: bool):
 
     for dtype in [torch.float16, torch.float32]:
         datatype = "fp16" if dtype == torch.float16 else "fp32"
-        results: Dict[str, Any] = {}
-        results_mem: Dict[str, Any] = {}
+        results: dict[str, Any] = {}
+        results_mem: dict[str, Any] = {}
         for BS in BLOCK_SIZES:
             for heads in N_HEADS:
                 for B, M, K in SHAPES:

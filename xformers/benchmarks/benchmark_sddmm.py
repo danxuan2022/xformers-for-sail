@@ -9,7 +9,8 @@ import torch
 from torch.utils import benchmark
 
 from xformers.components.attention._sputnik_sparse import _csr_to_coo
-from xformers.components.attention.core import SparseCS, _create_random_sparsity
+from xformers.components.attention.core import _create_random_sparsity, SparseCS
+
 
 MIN_RUN_TIME = 0.2
 
@@ -61,7 +62,6 @@ def bench_sddmm(configs):
         column_indices = mask.column_indices
 
         for backend in ["csr_sputnik", "csr_ge", "coo_ge", "csr_to_coo"]:
-
             fn_str = "fn(a, b, row_indices, row_offsets, column_indices)"
             fn = _get_fn(backend)
 

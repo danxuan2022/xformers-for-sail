@@ -16,15 +16,17 @@ import os
 import tempfile
 from collections import defaultdict, namedtuple
 from dataclasses import replace
-from typing import Any, Dict, Generator, Iterator, List, Set, Tuple
+from typing import Any, Generator, Iterator
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-import torch
 import tqdm
+
+import torch
 from torch.utils import benchmark
+
 
 sns.set()
 
@@ -53,8 +55,8 @@ def get_func_name(fn):
 def pretty_print(results, title, units) -> None:
     """Printout the contents of a dict as a human-readable and Markdown compatible array"""
     print(title)
-    header = " Units: {:<45}".format(units)
-    print("| " + header + "|" + "".join("{0:<20}|".format(k) for k in results.keys()))
+    header = f" Units: {units:<45}"
+    print("| " + header + "|" + "".join(f"{k:<20}|" for k in results.keys()))
 
     offset = len(header)
     print(
@@ -62,7 +64,7 @@ def pretty_print(results, title, units) -> None:
         + "".join("{}|".format("-" * 20) for _ in results.keys())
     )
 
-    workloads: Dict[str, Any] = {k: [] for v in results.values() for k in v.keys()}
+    workloads: dict[str, Any] = {k: [] for v in results.values() for k in v.keys()}
     for v in results.values():
         for k in v.keys():
             workloads[k].append(v[k])
@@ -70,10 +72,10 @@ def pretty_print(results, title, units) -> None:
     for k, w in workloads.items():
         print(
             "| {0:<{offset}}|".format(k, offset=offset)
-            + "".join("{:<20}|".format(v) for v in w)
+            + "".join(f"{v:<20}|" for v in w)
         )
 
-    print("")
+    print()
 
 
 def pretty_plot(
@@ -92,7 +94,7 @@ def pretty_plot(
     )
 
     # Gather all the results in "collumns"
-    workloads: Dict[str, Any] = {k: [] for v in results.values() for k in v.keys()}
+    workloads: dict[str, Any] = {k: [] for v in results.values() for k in v.keys()}
     for v in results.values():
         for k in v.keys():
             workloads[k].append(float(v[k]))
@@ -121,12 +123,12 @@ def pretty_plot(
 if _triton_is_available:
 
     def bench_functions(
-        test_cases: List[TestCase], shapes, metric_transform, unit, title=""
+        test_cases: list[TestCase], shapes, metric_transform, unit, title=""
     ):
         device = torch.device("cuda")
 
         for dtype in [torch.bfloat16, torch.float16, torch.float32]:
-            results: Dict[str, Any] = {}
+            results: dict[str, Any] = {}
 
             for B, M, K in shapes:
                 a = torch.rand(B, M, K, device=device, dtype=dtype, requires_grad=True)
@@ -144,7 +146,7 @@ if _triton_is_available:
 
             pretty_print(
                 results,
-                title=" ------------- Type: {} ------------- ".format(dtype),
+                title=f" ------------- Type: {dtype} ------------- ",
                 units=unit,
             )
             pretty_plot(results, title + str(dtype), unit, dash_key="pytorch")
@@ -165,7 +167,7 @@ def pretty_barplot(results, title, units: str, filename=None, dash_key=""):
 
     xlabels = list(results.keys())
     # Gather all the results in "collumns"
-    workloads: Dict[str, Any] = {k: [] for v in results.values() for k in v.keys()}
+    workloads: dict[str, Any] = {k: [] for v in results.values() for k in v.keys()}
     for v in results.values():
         for k in v.keys():
             workloads[k].append(float(v[k]))
@@ -234,7 +236,7 @@ BASELINE_DESCRIPTIONS = ["eager", "vanilla", "pytorch"]
 
 # Serialize/unserialize to CSV
 # We could use pkl, but resort to CSV for readability
-def _benchmark_results_from_csv(filename: str) -> List[Tuple[Dict[str, Any], Any]]:
+def _benchmark_results_from_csv(filename: str) -> list[tuple[dict[str, Any], Any]]:
     parts = os.path.basename(filename).split(".")
     env = ""
     description = ""
@@ -243,7 +245,7 @@ def _benchmark_results_from_csv(filename: str) -> List[Tuple[Dict[str, Any], Any
         description = parts[0]
 
     data = []
-    with open(filename, "r") as csvfile:
+    with open(filename) as csvfile:
         reader = csv.DictReader(csvfile)
         for row in reader:
             if description != "" and row["description"] not in BASELINE_DESCRIPTIONS:
@@ -278,7 +280,7 @@ def _benchmark_results_from_csv(filename: str) -> List[Tuple[Dict[str, Any], Any
 
 
 def _benchmark_results_to_csv(
-    filename: str, results: List[Tuple[Dict[str, Any], Any]]
+    filename: str, results: list[tuple[dict[str, Any], Any]]
 ) -> None:
     data = [
         {
@@ -303,14 +305,14 @@ def _benchmark_results_to_csv(
             writer.writerow(d)
 
 
-def _finalize_results(results: List[Tuple[Dict[str, Any], Any]]) -> List[Any]:
+def _finalize_results(results: list[tuple[dict[str, Any], Any]]) -> list[Any]:
     """
     Returns a `benchmark.Compare` object, except that if we have runs
     with different algorithms, we also add the algorithm name
     in the column titles
     """
-    all_algorithms: Set[str] = set()
-    all_description: Set[str] = set()
+    all_algorithms: set[str] = set()
+    all_description: set[str] = set()
     for metadata, r in results:
         algo = metadata.get(META_ALGORITHM, None)
         if algo is not None:
@@ -340,12 +342,12 @@ def _finalize_results(results: List[Tuple[Dict[str, Any], Any]]) -> List[Any]:
     return display_results
 
 
-def _render_bar_plot(results: List[Any], store_results_folder: str) -> None:
+def _render_bar_plot(results: list[Any], store_results_folder: str) -> None:
     if not results:
         return
-    runtime: Dict[str, Dict[str, float]] = defaultdict(dict)
-    memory_usage: Dict[str, Dict[str, float]] = defaultdict(dict)
-    all_descriptions: List[str] = []
+    runtime: dict[str, dict[str, float]] = defaultdict(dict)
+    memory_usage: dict[str, dict[str, float]] = defaultdict(dict)
+    all_descriptions: list[str] = []
     for r in results:
         # Hacky: use a list to preserve order
         if r.task_spec.description not in all_descriptions:
@@ -355,8 +357,8 @@ def _render_bar_plot(results: List[Any], store_results_folder: str) -> None:
                 all_descriptions.append(r.task_spec.description)
         runtime[r.task_spec.sub_label][r.task_spec.description] = r.mean
         memory_usage[r.task_spec.sub_label][r.task_spec.description] = r.mem_use
-    all_data_mem: List[Any] = []
-    all_data_run: List[Any] = []
+    all_data_mem: list[Any] = []
+    all_data_run: list[Any] = []
     for key, runtime_values in runtime.items():
         memory_values = memory_usage[key]
         denom = memory_values.get(all_descriptions[0], math.inf)
@@ -436,7 +438,7 @@ def create_argparser() -> argparse.ArgumentParser:
 
 
 def benchmark_main_helper(
-    benchmark_fn, cases: List[Dict[str, Any]], arg_parser=None, **kwargs
+    benchmark_fn, cases: list[dict[str, Any]], arg_parser=None, **kwargs
 ) -> None:
     """
     Helper function to run benchmarks.
@@ -462,8 +464,8 @@ def benchmark_main_helper(
 
 def benchmark_run_and_compare(
     benchmark_fn,
-    cases: List[Dict[str, Any]],
-    compare: List[str],
+    cases: list[dict[str, Any]],
+    compare: list[str],
     omit_baselines: bool = False,
     fail_if_regression: bool = False,
     quiet: bool = False,
@@ -497,9 +499,9 @@ def benchmark_run_and_compare(
         )
     except (RuntimeError, AssertionError):  # No GPU
         env = "cpu"
-    assert (
-        "." not in optimized_label
-    ), f"label=`{optimized_label}` should not contain dots"
+    assert "." not in optimized_label, (
+        f"label=`{optimized_label}` should not contain dots"
+    )
     assert "." not in env, f"env=`{env}` should not contain dots"
 
     os.makedirs(store_results_folder, exist_ok=True)
@@ -638,7 +640,7 @@ def _is_oom_error(e):
 
 
 def _fail_if_regressions(
-    results: List[Any], reference: List[Any], atol_s: float, rtol: float
+    results: list[Any], reference: list[Any], atol_s: float, rtol: float
 ) -> None:
     def get_measurement_id(r):
         return (

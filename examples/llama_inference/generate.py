@@ -6,23 +6,24 @@
 import argparse
 import json
 import os
-import readline  # type: ignore # noqa
+import readline  # type: ignore  # noqa
 import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Optional, Tuple, Union
+from typing import Iterable, Optional, Union
 
 import model as fast
+
 import mp_utils
 import sample_utils
-import torch
 from stats import Stats
 from tokenizer import Tokenizer
-
 from xformers.ops.fmha.attn_bias import (
     BlockDiagonalCausalWithOffsetPaddedKeysMask as AttnBias,
 )
+
+import torch
 
 
 @dataclass
@@ -61,7 +62,7 @@ class FastGen:
         )
 
         ckpt_path = checkpoints[mp_utils.get_rank()]
-        with open(Path(ckpt_dir) / "params.json", "r") as f:
+        with open(Path(ckpt_dir) / "params.json") as f:
             params = json.loads(f.read())
         model_args = fast.ModelArgs(**params)
 
@@ -99,7 +100,7 @@ class FastGen:
     @torch.inference_mode()
     def generate_all(
         self, prompts: list[list[int]], use_cuda_graphs: bool
-    ) -> Tuple[Stats, list[list[int]]]:
+    ) -> tuple[Stats, list[list[int]]]:
         bs = len(prompts)
         prompt_lens = [len(p) for p in prompts]
         max_prompt_length = max(prompt_lens)

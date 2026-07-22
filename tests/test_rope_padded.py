@@ -6,12 +6,13 @@
 from typing import Optional
 
 import pytest
-import torch
-
 from xformers.ops import rope_padded
 from xformers.ops.fmha.attn_bias import BlockDiagonalCausalWithOffsetPaddedKeysMask
 
+import torch
+
 from .utils import assert_allclose
+
 
 compute_capability = (0, 0)
 if torch.cuda.is_available():

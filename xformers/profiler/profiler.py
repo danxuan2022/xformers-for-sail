@@ -12,7 +12,7 @@ import time
 import weakref
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Optional, Sequence
 
 import torch.cuda.memory
 import torch.cuda.nvtx
@@ -21,6 +21,7 @@ import torch.profiler
 
 from .device_limits import get_device_limits
 from .profile_analyzer import AnalyzedTrace
+
 
 logger = logging.getLogger(__name__)
 
@@ -84,14 +85,14 @@ class PyTorchProfiler:
             self._analyze_trace(prof)
         except Exception as exc:
             self.main_profiler.summary.append(("TraceAnalysis", "Error"))
-            logger.warn("Exception analyzing kineto trace", exc_info=exc)
+            logger.warning("Exception analyzing kineto trace", exc_info=exc)
 
     def _analyze_trace(self, prof: torch.profiler.profiler.profile) -> None:
         if prof.profiler is None or prof.profiler.kineto_results is None:
             return
         results = AnalyzedTrace.from_profile(prof.profiler.kineto_results.events())
         limits = get_device_limits(torch.device("cuda"))
-        hw_flops: Dict[torch.dtype, float] = {}
+        hw_flops: dict[torch.dtype, float] = {}
         if limits is not None:
             for dtype, tflops in limits.gemm_tflops.items():
                 hw_flops[dtype] = tflops * (1000**4)
@@ -199,7 +200,7 @@ class _Profiler:
     def __init__(
         self,
         output_dir: str,
-        schedule: Sequence[Tuple[Any, int, int]],
+        schedule: Sequence[tuple[Any, int, int]],
         module: Optional[nn.Module],
     ) -> None:
         self.check_schedule(schedule)
@@ -209,13 +210,13 @@ class _Profiler:
         self.output_dir.mkdir(exist_ok=True, parents=True)
         self.worker_name = ""
         if torch.distributed.is_initialized():
-            self.worker_name = "{}_{}".format(socket.gethostname(), str(os.getpid()))
+            self.worker_name = f"{socket.gethostname()}_{str(os.getpid())}"
 
         self.module = weakref.ref(module if module is not None else nn.Module())
         self.init_schedule()
 
     def init_schedule(self, offset: int = 0) -> None:
-        self.profilers: List[_ProfilerState] = sorted(
+        self.profilers: list[_ProfilerState] = sorted(
             [
                 _ProfilerState(cls, begin + offset, end + offset)
                 for cls, begin, end in self.schedule
@@ -223,9 +224,9 @@ class _Profiler:
             key=lambda x: x.iter_begin,
         )
         self.last_step = self.profilers[-1].iter_end if self.profilers else 0
-        self.summary: List[Tuple[str, str]] = []
+        self.summary: list[tuple[str, str]] = []
 
-    def check_schedule(self, schedule: Sequence[Tuple[Any, int, int]]) -> None:
+    def check_schedule(self, schedule: Sequence[tuple[Any, int, int]]) -> None:
         if len(schedule) == 0:
             logger.warning(
                 "You specified empty schedule for profiling. No data will be captured."
@@ -233,13 +234,13 @@ class _Profiler:
 
         pq: Any = queue.PriorityQueue()
         for cls, begin, end in schedule:
-            assert (
-                begin >= 0
-            ), f"Begin step of profiler must be non-negative, found: {begin}"
+            assert begin >= 0, (
+                f"Begin step of profiler must be non-negative, found: {begin}"
+            )
             assert end > 0, f"End step of profiler must be positive, found: {end}"
-            assert (
-                begin < end
-            ), f"Start must be before the end, found: begin={begin} and end={end}"
+            assert begin < end, (
+                f"Start must be before the end, found: begin={begin} and end={end}"
+            )
 
             pq.put((begin, end))
 

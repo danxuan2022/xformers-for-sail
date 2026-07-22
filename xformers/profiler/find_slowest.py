@@ -10,7 +10,6 @@ import json
 import os
 import sys
 from collections import defaultdict
-from typing import Dict, List
 
 import numpy as np
 
@@ -93,9 +92,9 @@ def compute_std_dev_of_event_durations_over_ranks(events, top=5):
 
 def sort_nccl_events(
     nccl_events, top_k: int = 3, last_k: int = 3
-) -> List[Dict[str, str]]:
+) -> list[dict[str, str]]:
     # Step 1: Group by 'log_name' and sum the 'duration_ms'
-    grouped_data: Dict[str, float] = defaultdict(float)
+    grouped_data: dict[str, float] = defaultdict(float)
     for event in nccl_events:
         key = event["log_name"]
         grouped_data[key] += event["duration_ms"]
@@ -104,7 +103,7 @@ def sort_nccl_events(
     sorted_list = sorted(grouped_data.items(), key=lambda x: x[1], reverse=True)
 
     # Step 3: Format the sorted list
-    formatted_list: List[Dict[str, str]] = [
+    formatted_list: list[dict[str, str]] = [
         {"log_name": log_name, "nccl_ms": f"{duration:.2f} ms"}
         for log_name, duration in sorted_list
     ]
@@ -146,7 +145,7 @@ def print_profiling_info(cuda_profile_dir: str):
         if has_json_gz_files:
             log_data = read_gzipped_json(profile_trace_path)
         else:
-            with open(profile_trace_path, "r") as f:
+            with open(profile_trace_path) as f:
                 log_data = json.loads(f.read())
 
         log_data["log_name"] = os.path.basename(profile_trace_path)

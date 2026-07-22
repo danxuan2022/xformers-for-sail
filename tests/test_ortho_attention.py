@@ -5,10 +5,10 @@
 import random
 
 import pytest
-import torch
-
 from xformers.components.attention import OrthoFormerAttention, ScaledDotProduct
 from xformers.components.attention.utils import maybe_merge_masks
+
+import torch
 
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="requires CUDA")

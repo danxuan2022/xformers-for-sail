@@ -7,19 +7,15 @@ import builtins
 from typing import (
     Any,
     Callable,
-    Dict,
     Generic,
     Iterable,
-    List,
-    NamedTuple,
     Optional,
-    Sequence,
-    Tuple,
-    Type,
+    overload,
+    TypeAlias,
     TypeVar,
     Union,
-    overload,
 )
+from typing_extensions import Literal as L, Self
 
 from numpy import ndarray
 from pyre_extensions import (
@@ -31,12 +27,9 @@ from pyre_extensions import (
     TypeVarTuple,
     Unpack,
 )
-from typing_extensions import Literal as L
 
-from . import nn as nn
-from . import sparse as sparse
+from . import nn as nn, sparse as sparse
 from .autograd import *
-from .random import initial_seed, set_rng_state
 
 DType = TypeVar("DType")
 DType2 = TypeVar("DType2")
@@ -83,7 +76,7 @@ class layout: ...
 
 strided: layout = ...
 
-Number = Union[builtins.int, builtins.float, builtins.bool]
+Number: TypeAlias = Union[builtins.int, builtins.float, builtins.bool]
 
 class MaxNamedTuple(Generic[DType, Unpack[Ts]]):
     values: Tensor[DType, Unpack[Ts]]
@@ -97,16 +90,16 @@ class device:
     def __init__(self, device_str: str): ...
 
 _just_device = device
-_device = Union[device, str]
+_device: TypeAlias = Union[device, str]
 
-class Size(Tuple[builtins.int, ...]):
+class Size(tuple[builtins.int, ...]):
     @overload
     def __getitem__(self: Size, key: builtins.int) -> builtins.int: ...
     @overload
     def __getitem__(self: Size, key: slice) -> Size: ...
     def numel(self: Size) -> builtins.int: ...
 
-class Generator(object):
+class Generator:
     device: _device
     def __init__(self, device: Union[_device, str, None] = None) -> None: ...
     def get_state(self) -> Tensor: ...
@@ -117,22 +110,22 @@ class Generator(object):
 
 default_generator: Generator = ...
 
-class Storage(object):
+class Storage:
     _cdata: int
-    def __deepcopy__(self, memo) -> "Storage": ...
-    def _new_shared(self, int) -> "Storage": ...
+    def __deepcopy__(self, memo) -> Storage: ...
+    def _new_shared(self, int) -> Storage: ...
     def _write_file(
         self, f: Any, is_real_file: builtins.bool, save_size: builtins.bool
     ) -> None: ...
     def element_size(self) -> int: ...
     def is_shared(self) -> bool: ...
-    def share_memory_(self) -> "Storage": ...
+    def share_memory_(self) -> Storage: ...
     def size(self) -> int: ...
 
 class Tensor(Generic[DType, Unpack[Ts]]):
     requires_grad: builtins.bool
     data: Tensor[DType, Unpack[Ts]]
-    names: List[str]
+    names: list[str]
     layout: layout
     T: Tensor[DType, Unpack[Ts]]
     output_nr: builtins.int
@@ -143,7 +136,7 @@ class Tensor(Generic[DType, Unpack[Ts]]):
     grad: Optional[Tensor]
     _grad_fn: Any
     _grad: Optional[Tensor]
-    _backward_hooks: Optional[Dict[builtins.int, Callable[[Tensor], Optional[Tensor]]]]
+    _backward_hooks: Optional[dict[builtins.int, Callable[[Tensor], Optional[Tensor]]]]
     @overload
     def __init__(self, other: Tensor[DType, Unpack[Ts]]) -> None: ...
     @overload
@@ -154,13 +147,13 @@ class Tensor(Generic[DType, Unpack[Ts]]):
     def __init__(self, storage: Storage) -> None: ...
     @overload
     def __init__(
-        self, size: Tuple[Unpack[Ts]], *, device: Union[_device, str, None] = ...
+        self, size: tuple[Unpack[Ts]], *, device: Union[_device, str, None] = ...
     ) -> None: ...
     @property
     def device(self) -> _device: ...
     @property
-    def dtype(self) -> Type[DType]: ...
-    def long(self) -> "LongTensor[DType, Unpack[Ts]]": ...
+    def dtype(self) -> type[DType]: ...
+    def long(self) -> LongTensor[DType, Unpack[Ts]]: ...
     # BEWARE: The type for self must not reuse `Ts`. This is because the type
     # of the object is `Tensor[DType, Unpack[Ts]]`.
     # We are trying to match part of it by using fresh type variables N1 and
@@ -177,7 +170,7 @@ class Tensor(Generic[DType, Unpack[Ts]]):
     @overload
     def size(self: Tensor[DType, Unpack[Rs], N1, N2], axis: L[-2]) -> N1: ...
     @overload
-    def size(self: Tensor[DType, Unpack[Rs]]) -> Tuple[Unpack[Rs]]: ...
+    def size(self: Tensor[DType, Unpack[Rs]]) -> tuple[Unpack[Rs]]: ...
     @overload
     def split(
         self: Tensor[DType, N1, Unpack[Rs]], split_size_or_sections: N, dim: L[0] = ...
@@ -210,20 +203,20 @@ class Tensor(Generic[DType, Unpack[Ts]]):
     def __getitem__(self, item: Any) -> Any: ...
     @overload
     def expand(
-        self: Tensor[DType, Unpack[Rs]], sizes: Tuple[Unpack[Rs2]]
-    ) -> Tensor[DType, Unpack[Broadcast[Tuple[Unpack[Rs]], Tuple[Unpack[Rs2]]]]]: ...
+        self: Tensor[DType, Unpack[Rs]], sizes: tuple[Unpack[Rs2]]
+    ) -> Tensor[DType, Unpack[Broadcast[tuple[Unpack[Rs]], tuple[Unpack[Rs2]]]]]: ...
     @overload
     def expand(
         self: Tensor[DType, Unpack[Rs]], *sizes: Unpack[Rs2]
-    ) -> Tensor[DType, Unpack[Broadcast[Tuple[Unpack[Rs]], Tuple[Unpack[Rs2]]]]]: ...
-    def detach(self: T) -> T: ...
+    ) -> Tensor[DType, Unpack[Broadcast[tuple[Unpack[Rs]], tuple[Unpack[Rs2]]]]]: ...
+    def detach(self) -> Self: ...
     # pyre-ignore[24]: Pyre is unable to find the custom stubs for numpy.
     def numpy(self) -> ndarray[DType, Unpack[Ts]]: ...
-    shape: Tuple[Unpack[Ts]]
+    shape: tuple[Unpack[Ts]]
     ndim: builtins.int
     @overload
     def to(
-        self: Tensor[DType, Unpack[Rs]], dtype: Type[T], device: _device = ...
+        self: Tensor[DType, Unpack[Rs]], dtype: type[T], device: _device = ...
     ) -> Tensor[T, Unpack[Rs]]: ...
     @overload
     def to(
@@ -233,7 +226,7 @@ class Tensor(Generic[DType, Unpack[Ts]]):
     @overload
     def __add__(
         self: Tensor[DType, Unpack[Rs]], other: Tensor[DType, Unpack[Rs2]]
-    ) -> Tensor[DType, Unpack[Broadcast[Tuple[Unpack[Rs]], Tuple[Unpack[Rs2]]]]]: ...
+    ) -> Tensor[DType, Unpack[Broadcast[tuple[Unpack[Rs]], tuple[Unpack[Rs2]]]]]: ...
     @overload
     def __add__(
         self: Tensor[DType, Unpack[Rs]],
@@ -242,7 +235,7 @@ class Tensor(Generic[DType, Unpack[Ts]]):
     @overload
     def __iadd__(
         self, other: Tensor[DType, Unpack[Rs]]
-    ) -> Tensor[DType, Unpack[Broadcast[Tuple[Unpack[Ts]], Tuple[Unpack[Rs]]]]]: ...
+    ) -> Tensor[DType, Unpack[Broadcast[tuple[Unpack[Ts]], tuple[Unpack[Rs]]]]]: ...
     @overload
     def __iadd__(
         self,
@@ -251,7 +244,7 @@ class Tensor(Generic[DType, Unpack[Ts]]):
     @overload
     def __radd__(
         self: Tensor[DType, Unpack[Rs]], other: Tensor[DType, Unpack[Rs2]]
-    ) -> Tensor[DType, Unpack[Broadcast[Tuple[Unpack[Rs]], Tuple[Unpack[Rs2]]]]]: ...
+    ) -> Tensor[DType, Unpack[Broadcast[tuple[Unpack[Rs]], tuple[Unpack[Rs2]]]]]: ...
     @overload
     def __radd__(
         self: Tensor[DType, Unpack[Rs]],
@@ -260,7 +253,7 @@ class Tensor(Generic[DType, Unpack[Ts]]):
     @overload
     def __sub__(
         self: Tensor[DType, Unpack[Rs]], other: Tensor[DType, Unpack[Rs2]]
-    ) -> Tensor[DType, Unpack[Broadcast[Tuple[Unpack[Rs]], Tuple[Unpack[Rs2]]]]]: ...
+    ) -> Tensor[DType, Unpack[Broadcast[tuple[Unpack[Rs]], tuple[Unpack[Rs2]]]]]: ...
     @overload
     def __sub__(
         self: Tensor[DType, Unpack[Rs]],
@@ -269,7 +262,7 @@ class Tensor(Generic[DType, Unpack[Ts]]):
     @overload
     def __isub__(
         self, other: Tensor[DType, Unpack[Rs]]
-    ) -> Tensor[DType, Unpack[Broadcast[Tuple[Unpack[Ts]], Tuple[Unpack[Rs]]]]]: ...
+    ) -> Tensor[DType, Unpack[Broadcast[tuple[Unpack[Ts]], tuple[Unpack[Rs]]]]]: ...
     @overload
     def __isub__(
         self,
@@ -278,7 +271,7 @@ class Tensor(Generic[DType, Unpack[Ts]]):
     @overload
     def __rsub__(
         self: Tensor[DType, Unpack[Rs]], other: Tensor[DType, Unpack[Rs2]]
-    ) -> Tensor[DType, Unpack[Broadcast[Tuple[Unpack[Rs]], Tuple[Unpack[Rs2]]]]]: ...
+    ) -> Tensor[DType, Unpack[Broadcast[tuple[Unpack[Rs]], tuple[Unpack[Rs2]]]]]: ...
     @overload
     def __rsub__(
         self: Tensor[DType, Unpack[Rs]],
@@ -288,7 +281,7 @@ class Tensor(Generic[DType, Unpack[Ts]]):
     def __mul__(
         self: Tensor[DType, Unpack[Rs]],
         other: Tensor[DType, Unpack[Rs2]],
-    ) -> Tensor[DType, Unpack[Broadcast[Tuple[Unpack[Rs]], Tuple[Unpack[Rs2]]]]]: ...
+    ) -> Tensor[DType, Unpack[Broadcast[tuple[Unpack[Rs]], tuple[Unpack[Rs2]]]]]: ...
     @overload
     def __mul__(
         self,
@@ -298,7 +291,7 @@ class Tensor(Generic[DType, Unpack[Ts]]):
     def __imul__(
         self,
         other: Tensor[DType, Unpack[Rs]],
-    ) -> Tensor[DType, Unpack[Broadcast[Tuple[Unpack[Ts]], Tuple[Unpack[Rs]]]]]: ...
+    ) -> Tensor[DType, Unpack[Broadcast[tuple[Unpack[Ts]], tuple[Unpack[Rs]]]]]: ...
     @overload
     def __imul__(
         self,
@@ -308,7 +301,7 @@ class Tensor(Generic[DType, Unpack[Ts]]):
     def __rmul__(
         self: Tensor[DType, Unpack[Rs]],
         other: Tensor[DType, Unpack[Rs2]],
-    ) -> Tensor[DType, Unpack[Broadcast[Tuple[Unpack[Rs]], Tuple[Unpack[Rs2]]]]]: ...
+    ) -> Tensor[DType, Unpack[Broadcast[tuple[Unpack[Rs]], tuple[Unpack[Rs2]]]]]: ...
     @overload
     def __rmul__(
         self,
@@ -318,7 +311,7 @@ class Tensor(Generic[DType, Unpack[Ts]]):
     def __pow__(
         self: Tensor[DType, Unpack[Rs]],
         other: Tensor[DType, Unpack[Rs2]],
-    ) -> Tensor[DType, Unpack[Broadcast[Tuple[Unpack[Rs]], Tuple[Unpack[Rs2]]]]]: ...
+    ) -> Tensor[DType, Unpack[Broadcast[tuple[Unpack[Rs]], tuple[Unpack[Rs2]]]]]: ...
     @overload
     def __pow__(
         self,
@@ -333,7 +326,7 @@ class Tensor(Generic[DType, Unpack[Ts]]):
     def __truediv__(
         self,
         other: Tensor[DType, Unpack[Rs]],
-    ) -> Tensor[float32, Unpack[Broadcast[Tuple[Unpack[Ts]], Tuple[Unpack[Rs]]]]]: ...
+    ) -> Tensor[float32, Unpack[Broadcast[tuple[Unpack[Ts]], tuple[Unpack[Rs]]]]]: ...
     @overload
     def __itruediv__(
         self,
@@ -343,7 +336,7 @@ class Tensor(Generic[DType, Unpack[Ts]]):
     def __itruediv__(
         self,
         other: Tensor[DType, Unpack[Rs]],
-    ) -> Tensor[DType, Unpack[Broadcast[Tuple[Unpack[Ts]], Tuple[Unpack[Rs]]]]]: ...
+    ) -> Tensor[DType, Unpack[Broadcast[tuple[Unpack[Ts]], tuple[Unpack[Rs]]]]]: ...
     @overload
     def __rtruediv__(
         self,
@@ -358,7 +351,7 @@ class Tensor(Generic[DType, Unpack[Ts]]):
     def __floordiv__(
         self,
         other: Tensor[DType, Unpack[Rs]],
-    ) -> Tensor[DType, Unpack[Broadcast[Tuple[Unpack[Ts]], Tuple[Unpack[Rs]]]]]: ...
+    ) -> Tensor[DType, Unpack[Broadcast[tuple[Unpack[Ts]], tuple[Unpack[Rs]]]]]: ...
     @overload
     def __ifloordiv__(
         self,
@@ -368,7 +361,7 @@ class Tensor(Generic[DType, Unpack[Ts]]):
     def __ifloordiv__(
         self,
         other: Tensor[DType, Unpack[Rs]],
-    ) -> Tensor[DType, Unpack[Broadcast[Tuple[Unpack[Ts]], Tuple[Unpack[Rs]]]]]: ...
+    ) -> Tensor[DType, Unpack[Broadcast[tuple[Unpack[Ts]], tuple[Unpack[Rs]]]]]: ...
     @overload
     def __rfloordiv__(
         self,
@@ -379,11 +372,11 @@ class Tensor(Generic[DType, Unpack[Ts]]):
     def __iand__(
         self: Tensor[bool, Unpack[Rs]],
         other: Tensor[bool, Unpack[Rs2]],
-    ) -> Tensor[bool, Unpack[Broadcast[Tuple[Unpack[Rs]], Tuple[Unpack[Rs2]]]]]: ...
+    ) -> Tensor[bool, Unpack[Broadcast[tuple[Unpack[Rs]], tuple[Unpack[Rs2]]]]]: ...
     def __and__(
         self: Tensor[bool, Unpack[Rs]],
         other: Tensor[bool, Unpack[Rs2]],
-    ) -> Tensor[bool, Unpack[Broadcast[Tuple[Unpack[Rs]], Tuple[Unpack[Rs2]]]]]: ...
+    ) -> Tensor[bool, Unpack[Broadcast[tuple[Unpack[Rs]], tuple[Unpack[Rs2]]]]]: ...
     @overload
     def __matmul__(
         self: Tensor[DType, N1],
@@ -394,7 +387,7 @@ class Tensor(Generic[DType, Unpack[Ts]]):
         self: Tensor[DType, Unpack[Rs], N1, N2],
         other: Tensor[DType, Unpack[Qs], N2, N3],
     ) -> Tensor[
-        DType, Unpack[Broadcast[Tuple[Unpack[Rs]], Tuple[Unpack[Qs]]]], N1, N3
+        DType, Unpack[Broadcast[tuple[Unpack[Rs]], tuple[Unpack[Qs]]]], N1, N3
     ]: ...
     def __ne__(
         self: Tensor[DType, Unpack[Rs]], other: DType
@@ -528,14 +521,14 @@ class Tensor(Generic[DType, Unpack[Ts]]):
     @overload
     def chunk(
         self: Tensor[DType, Unpack[Rs], N], chunks: L[2], dim: L[-1]
-    ) -> Tuple[
+    ) -> tuple[
         Tensor[DType, Unpack[Rs], Divide[N, L[2]]],
         Tensor[DType, Unpack[Rs], Divide[N, L[2]]],
     ]: ...
     @overload
     def chunk(
         self: Tensor[DType, N, Unpack[Rs]], chunks: L[2], dim: L[0] = ...
-    ) -> Tuple[
+    ) -> tuple[
         Tensor[DType, Divide[N, L[2]], Unpack[Rs]],
         Tensor[DType, Divide[N, L[2]], Unpack[Rs]],
     ]: ...
@@ -736,7 +729,7 @@ class Tensor(Generic[DType, Unpack[Ts]]):
     def __eq__(
         self,
         other: Tensor[DType, Unpack[Rs]],
-    ) -> Tensor[bool, Unpack[Broadcast[Tuple[Unpack[Ts]], Tuple[Unpack[Rs]]]]]: ...
+    ) -> Tensor[bool, Unpack[Broadcast[tuple[Unpack[Ts]], tuple[Unpack[Rs]]]]]: ...
     @overload
     def __eq__(
         self,
@@ -749,7 +742,7 @@ class Tensor(Generic[DType, Unpack[Ts]]):
         self: Tensor[DType, B, N, M], mat2: Tensor[DType, B, M, P]
     ) -> Tensor[DType, B, N, P]: ...
     def diag_embed(
-        self: Tensor[DType, Unpack[Rs], N]
+        self: Tensor[DType, Unpack[Rs], N],
     ) -> Tensor[DType, Unpack[Rs], N, N]: ...
     @overload
     def matmul(
@@ -761,7 +754,7 @@ class Tensor(Generic[DType, Unpack[Ts]]):
         self: Tensor[DType, Unpack[Rs], N1, N2],
         other: Tensor[DType, Unpack[Qs], N2, N3],
     ) -> Tensor[
-        DType, Unpack[Broadcast[Tuple[Unpack[Rs]], Tuple[Unpack[Qs]]]], N1, N3
+        DType, Unpack[Broadcast[tuple[Unpack[Rs]], tuple[Unpack[Qs]]]], N1, N3
     ]: ...
     def multinomial(
         self: Tensor[DType, Unpack[Rs], N1],
@@ -773,16 +766,16 @@ class Tensor(Generic[DType, Unpack[Ts]]):
     @overload
     def new_ones(
         self,
-        size: Tuple[Unpack[Rs]],
-        dtype: Type[DType2],
+        size: tuple[Unpack[Rs]],
+        dtype: type[DType2],
         device: _device = ...,
         requires_grad: builtins.bool = ...,
     ) -> Tensor[DType2, Unpack[Rs]]: ...
     @overload
     def new_ones(
         self,
-        size: Tuple[Unpack[Rs]],
-        dtype: Type[DType] = ...,
+        size: tuple[Unpack[Rs]],
+        dtype: type[DType] = ...,
         device: _device = ...,
         requires_grad: builtins.bool = ...,
     ) -> Tensor[DType, Unpack[Rs]]: ...
@@ -852,7 +845,7 @@ class Tensor(Generic[DType, Unpack[Ts]]):
     @overload
     def repeat_interleave(
         input: Tensor[DType, Unpack[Rs]], repeats: Tensor, dim: builtins.int = ...
-    ) -> Tensor[DType, Unpack[Tuple[Any, ...]]]: ...
+    ) -> Tensor[DType, Unpack[tuple[Any, ...]]]: ...
     def __setitem__(self, item: object, other: object) -> None: ...
     @overload
     def scatter(
@@ -874,7 +867,7 @@ class Tensor(Generic[DType, Unpack[Ts]]):
     def softmax(self, dim: builtins.int) -> Tensor[DType, Unpack[Ts]]: ...
     @overload
     def softmax(
-        self, dim: builtins.int, dtype: Type[DType2]
+        self, dim: builtins.int, dtype: type[DType2]
     ) -> Tensor[DType2, Unpack[Ts]]: ...
     @overload
     def stride(
@@ -889,7 +882,7 @@ class Tensor(Generic[DType, Unpack[Ts]]):
         self: Tensor[DType, builtins.int, builtins.int, builtins.int], dim: L[2]
     ) -> L[1]: ...
     @overload
-    def stride(self) -> Tuple[Unpack[Ts]]: ...
+    def stride(self) -> tuple[Unpack[Ts]]: ...
     @overload
     def squeeze(
         self: Tensor[DType, Unpack[Rs], L[1], L[1]], *, out: Optional[Tensor] = ...
@@ -947,19 +940,19 @@ class Tensor(Generic[DType, Unpack[Ts]]):
     ) -> Tensor[DType, Unpack[Rs]]: ...
     @overload
     def view(
-        self: Tensor[DType, Unpack[Rs]], *shape: Unpack[Tuple[L[-1], Unpack[Rs2]]]
+        self: Tensor[DType, Unpack[Rs]], *shape: Unpack[tuple[L[-1], Unpack[Rs2]]]
     ) -> Tensor[
         DType, Divide[Product[Unpack[Rs]], Product[Unpack[Rs2]]], Unpack[Rs2]
     ]: ...
     @overload
     def view(
-        self: Tensor[DType, Unpack[Rs]], *shape: Unpack[Tuple[N1, L[-1], Unpack[Rs2]]]
+        self: Tensor[DType, Unpack[Rs]], *shape: Unpack[tuple[N1, L[-1], Unpack[Rs2]]]
     ) -> Tensor[
         DType, N1, Divide[Product[Unpack[Rs]], Product[N1, Unpack[Rs2]]], Unpack[Rs2]
     ]: ...
     @overload
     def view(
-        self: Tensor[DType, Unpack[Rs]], *shape: Unpack[Tuple[Unpack[Rs2], L[-1]]]
+        self: Tensor[DType, Unpack[Rs]], *shape: Unpack[tuple[Unpack[Rs2], L[-1]]]
     ) -> Tensor[
         DType, Unpack[Rs2], Divide[Product[Unpack[Rs]], Product[Unpack[Rs2]]]
     ]: ...
@@ -1036,22 +1029,22 @@ class Tensor(Generic[DType, Unpack[Ts]]):
         other: Tensor[DType2, Unpack[Rs]],
         *,
         out: Optional[Tensor] = ...,
-    ) -> Tensor[bool, Unpack[Broadcast[Tuple[Unpack[Ts]], Tuple[Unpack[Rs]]]]]: ...
+    ) -> Tensor[bool, Unpack[Broadcast[tuple[Unpack[Ts]], tuple[Unpack[Rs]]]]]: ...
     def logical_and_(
         self,
         other: Tensor[DType2, Unpack[Rs]],
         *,
         out: Optional[Tensor] = ...,
-    ) -> Tensor[bool, Unpack[Broadcast[Tuple[Unpack[Ts]], Tuple[Unpack[Rs]]]]]: ...
+    ) -> Tensor[bool, Unpack[Broadcast[tuple[Unpack[Ts]], tuple[Unpack[Rs]]]]]: ...
     @overload
     def reshape(
-        self: Tensor[DType, Unpack[Rs]], *shape: Unpack[Tuple[L[-1], Unpack[Rs2]]]
+        self: Tensor[DType, Unpack[Rs]], *shape: Unpack[tuple[L[-1], Unpack[Rs2]]]
     ) -> Tensor[
         DType, Divide[Product[Unpack[Rs]], Product[Unpack[Rs2]]], Unpack[Rs2]
     ]: ...
     @overload
     def reshape(
-        self: Tensor[DType, Unpack[Rs]], *shape: Unpack[Tuple[N1, L[-1], Unpack[Rs2]]]
+        self: Tensor[DType, Unpack[Rs]], *shape: Unpack[tuple[N1, L[-1], Unpack[Rs2]]]
     ) -> Tensor[
         DType, N1, Divide[Product[Unpack[Rs]], Product[N1, Unpack[Rs2]]], Unpack[Rs2]
     ]: ...
@@ -1060,15 +1053,15 @@ class Tensor(Generic[DType, Unpack[Ts]]):
     @overload
     def unbind(
         self: Tensor[DType, Unpack[Rs], N], dim: L[-1]
-    ) -> Tuple[Tensor[DType, Unpack[Rs]], ...]: ...
+    ) -> tuple[Tensor[DType, Unpack[Rs]], ...]: ...
     @overload
     def unbind(
         self: Tensor[DType, N, N1, Unpack[Rs]], dim: L[1]
-    ) -> Tuple[Tensor[DType, N, Unpack[Rs]], ...]: ...
+    ) -> tuple[Tensor[DType, N, Unpack[Rs]], ...]: ...
     @overload
     def unbind(
         self: Tensor[DType, N, Unpack[Rs]], dim: L[0] = ...
-    ) -> Tuple[Tensor[DType, Unpack[Rs]], ...]: ...
+    ) -> tuple[Tensor[DType, Unpack[Rs]], ...]: ...
     def sign(self, *, out: Optional[Tensor] = ...) -> Tensor[DType, Unpack[Ts]]: ...
     @overload
     def sum(
@@ -1115,16 +1108,16 @@ class Tensor(Generic[DType, Unpack[Ts]]):
 class LongTensor(Tensor[DType, Unpack[Ts]], Generic[DType, Unpack[Ts]]):
     @overload
     def __getitem__(
-        self: LongTensor[DType, Unpack[Rs], N], val: Tuple[object, None]
-    ) -> LongTensor[DType, Unpack[Tuple[Any, ...]]]: ...
+        self: LongTensor[DType, Unpack[Rs], N], val: tuple[object, None]
+    ) -> LongTensor[DType, Unpack[tuple[Any, ...]]]: ...
     @overload
     def __getitem__(
-        self: LongTensor[DType, Unpack[Rs], N], val: Tuple[None, object]
-    ) -> LongTensor[DType, Unpack[Tuple[Any, ...]]]: ...
+        self: LongTensor[DType, Unpack[Rs], N], val: tuple[None, object]
+    ) -> LongTensor[DType, Unpack[tuple[Any, ...]]]: ...
     @overload
     def __getitem__(
         self: LongTensor[DType, Unpack[Rs], N], val: slice
-    ) -> LongTensor[DType, Unpack[Tuple[Any, ...]]]: ...
+    ) -> LongTensor[DType, Unpack[tuple[Any, ...]]]: ...
     def __eq__(
         self: LongTensor[DType, Unpack[Rs]],
         other: LongTensor[DType, Unpack[Rs]],
@@ -1151,7 +1144,7 @@ def einsum(
 def eye(
     n: N,
     *,
-    dtype: Type[float32] = ...,
+    dtype: type[float32] = ...,
     out: Optional[Tensor] = ...,
     layout: Optional[layout] = ...,
     device: Union[_device, str, None] = ...,
@@ -1163,7 +1156,7 @@ def eye(
     n: N,
     m: M,
     *,
-    dtype: Type[float32] = ...,
+    dtype: type[float32] = ...,
     out: Optional[Tensor] = ...,
     layout: Optional[layout] = ...,
     device: Union[_device, str, None] = ...,
@@ -1174,7 +1167,7 @@ def eye(
 def eye(
     n: N,
     *,
-    dtype: Type[DType],
+    dtype: type[DType],
     out: Optional[Tensor] = ...,
     layout: Optional[layout] = ...,
     device: Union[_device, str, None] = ...,
@@ -1186,7 +1179,7 @@ def eye(
     n: N,
     m: M,
     *,
-    dtype: Type[DType],
+    dtype: type[DType],
     out: Optional[Tensor] = ...,
     layout: Optional[layout] = ...,
     device: Union[_device, str, None] = ...,
@@ -1195,9 +1188,9 @@ def eye(
 ) -> Tensor[DType, N, M]: ...
 @overload
 def zeros(
-    size: Tuple[Unpack[Ts]],
+    size: tuple[Unpack[Ts]],
     *,
-    dtype: Type[DType],
+    dtype: type[DType],
     out: Optional[Tensor] = ...,
     layout: Optional[layout] = ...,
     device: Optional[_device] = ...,
@@ -1206,9 +1199,9 @@ def zeros(
 ) -> Tensor[DType, Unpack[Ts]]: ...
 @overload
 def zeros(
-    size: Tuple[Unpack[Ts]],
+    size: tuple[Unpack[Ts]],
     *,
-    dtype: Type[float32] = ...,
+    dtype: type[float32] = ...,
     low: builtins.int = ...,
     out: Optional[Tensor] = ...,
     layout: Optional[layout] = ...,
@@ -1219,7 +1212,7 @@ def zeros(
 @overload
 def zeros(
     *size: Unpack[Ts],
-    dtype: Type[DType],
+    dtype: type[DType],
     out: Optional[Tensor] = ...,
     layout: Optional[layout] = ...,
     device: Optional[_device] = ...,
@@ -1229,7 +1222,7 @@ def zeros(
 @overload
 def zeros(
     *size: Unpack[Ts],
-    dtype: Type[float32] = ...,
+    dtype: type[float32] = ...,
     low: builtins.int = ...,
     out: Optional[Tensor] = ...,
     layout: Optional[layout] = ...,
@@ -1241,13 +1234,13 @@ def zeros(
 def ones(*size: Unpack[Ts]) -> Tensor[float, Unpack[Ts]]: ...
 @overload
 def ones(
-    *size: Unpack[Ts], dtype: Type[DType] = ..., device: _device = ...
+    *size: Unpack[Ts], dtype: type[DType] = ..., device: _device = ...
 ) -> Tensor[DType, Unpack[Ts]]: ...
 @overload
 def ones_like(
     input: Tensor[DType, Unpack[Ts]],
     *,
-    dtype: Type[DType2],
+    dtype: type[DType2],
     memory_format: Optional[memory_format] = ...,
     layout: Optional[layout] = ...,
     device: Union[_device, str, None] = ...,
@@ -1259,7 +1252,7 @@ def ones_like(
     input: Tensor[DType, Unpack[Ts]],
     *,
     memory_format: Optional[memory_format] = ...,
-    dtype: Type[DType] = ...,
+    dtype: type[DType] = ...,
     layout: Optional[layout] = ...,
     device: Union[_device, str, None] = ...,
     pin_memory: builtins.bool = ...,
@@ -1273,8 +1266,8 @@ def arange(
     end: N1,
     *,
     out: Optional[int] = ...,
-    dtype: Type[int64] = ...,
-    layout: Type[layout] = ...,
+    dtype: type[int64] = ...,
+    layout: type[layout] = ...,
     device: _device = ...,
     requires_grad: builtins.bool = ...,
 ) -> Tensor[int64, N1]: ...
@@ -1284,8 +1277,8 @@ def arange(
     end: N2,
     *,
     out: Optional[int] = ...,
-    dtype: Type[int64] = ...,
-    layout: Type[layout] = ...,
+    dtype: type[int64] = ...,
+    layout: type[layout] = ...,
     device: _device = ...,
     requires_grad: builtins.bool = ...,
 ) -> Tensor[int64, Add[N2, Multiply[L[-1], N1]]]: ...
@@ -1295,8 +1288,8 @@ def arange(
     end: N2,
     step: N3,
     out: Optional[int] = ...,
-    dtype: Type[int64] = ...,
-    layout: Type[layout] = ...,
+    dtype: type[int64] = ...,
+    layout: type[layout] = ...,
     device: _device = ...,
     requires_grad: builtins.bool = ...,
 ) -> Tensor[int64, Divide[Add[N2, Multiply[L[-1], N1]], N3]]: ...
@@ -1306,9 +1299,9 @@ def arange(
 def arange(
     end: N1,
     *,
-    dtype: Type[DType],
+    dtype: type[DType],
     out: Optional[int] = ...,
-    layout: Type[layout] = ...,
+    layout: type[layout] = ...,
     device: _device = ...,
     requires_grad: builtins.bool = ...,
 ) -> Tensor[DType, N1]: ...
@@ -1317,9 +1310,9 @@ def arange(
     start: N1,
     end: N2,
     *,
-    dtype: Type[DType],
+    dtype: type[DType],
     out: Optional[int] = ...,
-    layout: Type[layout] = ...,
+    layout: type[layout] = ...,
     device: _device = ...,
     requires_grad: builtins.bool = ...,
 ) -> Tensor[DType, Add[N2, Multiply[L[-1], N1]]]: ...
@@ -1328,9 +1321,9 @@ def arange(
     start: N1,
     end: N2,
     step: N3,
-    dtype: Type[DType],
+    dtype: type[DType],
     out: Optional[int] = ...,
-    layout: Type[layout] = ...,
+    layout: type[layout] = ...,
     device: _device = ...,
     requires_grad: builtins.bool = ...,
 ) -> Tensor[DType, Divide[Add[N2, Multiply[L[-1], N1]], N3]]: ...
@@ -1340,8 +1333,8 @@ def arange(
     start: builtin_float = ...,
     step: builtin_float = ...,
     out: Optional[int] = ...,
-    dtype: Type[DType] = ...,
-    layout: Type[layout] = ...,
+    dtype: type[DType] = ...,
+    layout: type[layout] = ...,
     device: _device = ...,
     requires_grad: builtins.bool = ...,
 ) -> Tensor[DType, builtins.str]: ...
@@ -1459,40 +1452,40 @@ def bmm(
 @overload
 def chunk(
     input: Tensor[DType, Unpack[Ts], N], chunks: L[2], dim: L[-1]
-) -> Tuple[
+) -> tuple[
     Tensor[DType, Unpack[Ts], Divide[N, L[2]]],
     Tensor[DType, Unpack[Ts], Divide[N, L[2]]],
 ]: ...
 @overload
 def chunk(
     input: Tensor[DType, N, Unpack[Ts]], chunks: L[2], dim: L[0] = ...
-) -> Tuple[
+) -> tuple[
     Tensor[DType, Divide[N, L[2]], Unpack[Ts]],
     Tensor[DType, Divide[N, L[2]], Unpack[Ts]],
 ]: ...
 def diag(
-    input: Tensor[DType, Unpack[Tuple[Any, ...]]],
+    input: Tensor[DType, Unpack[tuple[Any, ...]]],
     diagonal: builtins.int = ...,
     *,
     out: Optional[Tensor] = ...,
-) -> Tensor[DType, Unpack[Tuple[Any, ...]]]: ...
+) -> Tensor[DType, Unpack[tuple[Any, ...]]]: ...
 def diagonal(
-    input: Tensor[DType, Unpack[Tuple[Any, ...]]],
+    input: Tensor[DType, Unpack[tuple[Any, ...]]],
     offset: builtins.int = ...,
     dim1: builtins.int = ...,
     dim2: builtins.int = ...,
-) -> Tensor[DType, Unpack[Tuple[Any, ...]]]: ...
+) -> Tensor[DType, Unpack[tuple[Any, ...]]]: ...
 def diag_embed(
-    input: Tensor[DType, Unpack[Tuple[Any, ...]]],
+    input: Tensor[DType, Unpack[tuple[Any, ...]]],
     offset: builtins.int = ...,
     dim1: builtins.int = ...,
     dim2: builtins.int = ...,
-) -> Tensor[DType, Unpack[Tuple[Any, ...]]]: ...
+) -> Tensor[DType, Unpack[tuple[Any, ...]]]: ...
 @overload
 def empty_like(
     input: Tensor[DType, Unpack[Ts]],
     *,
-    dtype: Type[DType2],
+    dtype: type[DType2],
     memory_format: Optional[memory_format] = ...,
     layout: Optional[layout] = ...,
     device: Union[_device, str, None] = ...,
@@ -1505,7 +1498,7 @@ def empty_like(
     input: Tensor[DType, Unpack[Ts]],
     *,
     memory_format: Optional[memory_format] = ...,
-    dtype: Type[DType] = ...,
+    dtype: type[DType] = ...,
     layout: Optional[layout] = ...,
     device: Union[_device, str, None] = ...,
     pin_memory: builtins.bool = ...,
@@ -1517,11 +1510,11 @@ def logical_and(
     other: Tensor[DType2, Unpack[Rs]],
     *,
     out: Optional[Tensor] = ...,
-) -> Tensor[bool, Unpack[Broadcast[Tuple[Unpack[Ts]], Tuple[Unpack[Rs]]]]]: ...
+) -> Tensor[bool, Unpack[Broadcast[tuple[Unpack[Ts]], tuple[Unpack[Rs]]]]]: ...
 @overload
 def log_softmax(
     input: Tensor[DType, Unpack[Rs]],
-    dtype: Type[DType2],
+    dtype: type[DType2],
     dim: Optional[builtins.int] = ...,
 ) -> Tensor[DType2, Unpack[Rs]]: ...
 @overload
@@ -1653,22 +1646,22 @@ def mean(
     keepdim: builtins.bool = ...,
 ) -> Tensor[DType]: ...
 @overload
-def meshgrid(tensor1: Tensor[DType, N1]) -> Tuple[Tensor[DType, N1]]: ...
+def meshgrid(tensor1: Tensor[DType, N1]) -> tuple[Tensor[DType, N1]]: ...
 @overload
 def meshgrid(
     tensor1: Tensor[DType, N1],
     tensor2: Tensor[DType, N2],
-) -> Tuple[Tensor[DType, N1, N2], Tensor[DType, N1, N2]]: ...
+) -> tuple[Tensor[DType, N1, N2], Tensor[DType, N1, N2]]: ...
 @overload
 def meshgrid(
     tensor1: Tensor[DType, N1],
     tensor2: Tensor[DType, N2],
     tensor3: Tensor[DType, N3],
-) -> Tuple[
+) -> tuple[
     Tensor[DType, N1, N2, N3], Tensor[DType, N1, N2, N3], Tensor[DType, N1, N2, N3]
 ]: ...
 @overload
-def meshgrid(*tensors: Tensor) -> Tuple[Tensor, ...]: ...
+def meshgrid(*tensors: Tensor) -> tuple[Tensor, ...]: ...
 @overload
 def norm(
     input: Tensor[DType, N1, Unpack[Rs]],
@@ -1754,16 +1747,16 @@ def norm(
 def normal(
     mean: builtins.float,
     std: builtins.float,
-    size: Tuple[Unpack[Rs]],
+    size: tuple[Unpack[Rs]],
     *,
     device: _device = ...,
     requires_grad: builtins.bool = ...,
 ) -> Tensor[float32, Unpack[Rs]]: ...
 @overload
 def rand(
-    size: Tuple[Unpack[Ts]],
+    size: tuple[Unpack[Ts]],
     *,
-    dtype: Type[DType],
+    dtype: type[DType],
     out: Optional[Tensor] = ...,
     layout: Optional[layout] = ...,
     device: Optional[_device] = ...,
@@ -1772,9 +1765,9 @@ def rand(
 ) -> Tensor[DType, Unpack[Ts]]: ...
 @overload
 def rand(
-    size: Tuple[Unpack[Ts]],
+    size: tuple[Unpack[Ts]],
     *,
-    dtype: Type[float32] = ...,
+    dtype: type[float32] = ...,
     low: builtins.int = ...,
     out: Optional[Tensor] = ...,
     layout: Optional[layout] = ...,
@@ -1785,7 +1778,7 @@ def rand(
 @overload
 def rand(
     *size: Unpack[Ts],
-    dtype: Type[DType],
+    dtype: type[DType],
     out: Optional[Tensor] = ...,
     layout: Optional[layout] = ...,
     device: Optional[_device] = ...,
@@ -1795,7 +1788,7 @@ def rand(
 @overload
 def rand(
     *size: Unpack[Ts],
-    dtype: Type[float32] = ...,
+    dtype: type[float32] = ...,
     low: builtins.int = ...,
     out: Optional[Tensor] = ...,
     layout: Optional[layout] = ...,
@@ -1807,8 +1800,8 @@ def rand(
 def randint(
     low: builtins.int,
     high: builtins.int,
-    size: Tuple[Unpack[Ts]],
-    dtype: Type[DType],
+    size: tuple[Unpack[Ts]],
+    dtype: type[DType],
     *,
     generator: Optional[Generator] = ...,
     out: Optional[Tensor] = ...,
@@ -1819,8 +1812,8 @@ def randint(
 @overload
 def randint(
     high: builtins.int,
-    size: Tuple[Unpack[Ts]],
-    dtype: Type[DType],
+    size: tuple[Unpack[Ts]],
+    dtype: type[DType],
     *,
     low: builtins.int = ...,
     generator: Optional[Generator] = ...,
@@ -1833,19 +1826,19 @@ def randint(
 def randint(
     low: builtins.int,
     high: builtins.int,
-    size: Tuple[Unpack[Ts]],
+    size: tuple[Unpack[Ts]],
     *,
     generator: Optional[Generator] = ...,
     out: Optional[Tensor] = ...,
     layout: Optional[layout] = ...,
     device: Optional[_device] = ...,
     requires_grad: Optional[builtins.bool] = ...,
-    dtype: Type[int64] = ...,
+    dtype: type[int64] = ...,
 ) -> Tensor[int64, Unpack[Ts]]: ...
 @overload
 def randint(
     high: builtins.int,
-    size: Tuple[Unpack[Ts]],
+    size: tuple[Unpack[Ts]],
     *,
     low: builtins.int = ...,
     generator: Optional[Generator] = ...,
@@ -1853,10 +1846,10 @@ def randint(
     layout: Optional[layout] = ...,
     device: Optional[_device] = ...,
     requires_grad: Optional[builtins.bool] = ...,
-    dtype: Type[int64] = ...,
+    dtype: type[int64] = ...,
 ) -> Tensor[int64, Unpack[Ts]]: ...
 def rand_like(
-    input: Tensor[Wild, Unpack[Ts]], dtype: Type[DType]
+    input: Tensor[Wild, Unpack[Ts]], dtype: type[DType]
 ) -> Tensor[DType, Unpack[Ts]]: ...
 def nonzero(
     input: Tensor[DType, Unpack[Ts]], as_tuple: L[False] = ...
@@ -1882,24 +1875,24 @@ def repeat_interleave(
 @overload
 def repeat_interleave(
     input: Tensor[DType, Unpack[Rs]], repeats: Tensor, dim: builtins.int = ...
-) -> Tensor[DType, Unpack[Tuple[Any, ...]]]: ...
+) -> Tensor[DType, Unpack[tuple[Any, ...]]]: ...
 @overload
 def stack(
-    tensors: Tuple[Tensor[DType, N, Unpack[Ts]], Tensor[DType, N, Unpack[Ts]]],
+    tensors: tuple[Tensor[DType, N, Unpack[Ts]], Tensor[DType, N, Unpack[Ts]]],
     dim: L[1],
     *,
     out: Optional[Tensor[DType, L[2], Unpack[Ts]]] = ...,
 ) -> Tensor[DType, N, L[2], Unpack[Ts]]: ...
 @overload
 def stack(
-    tensors: Tuple[Tensor[DType, Unpack[Ts]], Tensor[DType, Unpack[Ts]]],
+    tensors: tuple[Tensor[DType, Unpack[Ts]], Tensor[DType, Unpack[Ts]]],
     dim: L[0] = ...,
     *,
     out: Optional[Tensor[DType, L[2], Unpack[Ts]]] = ...,
 ) -> Tensor[DType, L[2], Unpack[Ts]]: ...
 @overload
 def stack(
-    tensors: Tuple[
+    tensors: tuple[
         Tensor[DType, N, Unpack[Ts]],
         Tensor[DType, N, Unpack[Ts]],
         Tensor[DType, N, Unpack[Ts]],
@@ -1910,7 +1903,7 @@ def stack(
 ) -> Tensor[DType, N, L[3], Unpack[Ts]]: ...
 @overload
 def stack(
-    tensors: Tuple[
+    tensors: tuple[
         Tensor[DType, Unpack[Ts]],
         Tensor[DType, Unpack[Ts]],
         Tensor[DType, Unpack[Ts]],
@@ -1921,7 +1914,7 @@ def stack(
 ) -> Tensor[DType, L[3], Unpack[Ts]]: ...
 @overload
 def stack(
-    tensors: Tuple[Any, ...],
+    tensors: tuple[Any, ...],
     dim: N = ...,
     *,
     out: Optional[Tensor] = ...,
@@ -1931,7 +1924,7 @@ def cdist(
     other: Tensor[DType, Unpack[Rs], R, M],
     p: builtin_float = ...,
     compute_mode: str = ...,
-) -> Tensor[DType, Unpack[Broadcast[Tuple[Unpack[Ts]], Tuple[Unpack[Rs]]]], P, R]: ...
+) -> Tensor[DType, Unpack[Broadcast[tuple[Unpack[Ts]], tuple[Unpack[Rs]]]], P, R]: ...
 def clone(
     input: Tensor[DType, Unpack[Ts]], *, memory_format: Optional[memory_format] = ...
 ) -> Tensor[DType, Unpack[Ts]]: ...
@@ -2013,7 +2006,7 @@ def matmul(
     other: Tensor[DType, Unpack[Qs], N2, N3],
     *,
     out: Optional[Tensor] = ...,
-) -> Tensor[DType, Unpack[Broadcast[Tuple[Unpack[Rs]], Tuple[Unpack[Qs]]]], N1, N3]: ...
+) -> Tensor[DType, Unpack[Broadcast[tuple[Unpack[Rs]], tuple[Unpack[Qs]]]], N1, N3]: ...
 def multinomial(
     input: Tensor[DType, Unpack[Rs], N1],
     num_samples: N2,
@@ -2024,15 +2017,15 @@ def multinomial(
 @overload
 def unbind(
     input: Tensor[DType, Unpack[Rs], N], dim: L[-1]
-) -> Tuple[Tensor[DType, Unpack[Rs]], ...]: ...
+) -> tuple[Tensor[DType, Unpack[Rs]], ...]: ...
 @overload
 def unbind(
     input: Tensor[DType, N, N1, Unpack[Rs]], dim: L[1]
-) -> Tuple[Tensor[DType, N, Unpack[Rs]], ...]: ...
+) -> tuple[Tensor[DType, N, Unpack[Rs]], ...]: ...
 @overload
 def unbind(
     input: Tensor[DType, N, Unpack[Rs]], dim: L[0] = ...
-) -> Tuple[Tensor[DType, Unpack[Rs]], ...]: ...
+) -> tuple[Tensor[DType, Unpack[Rs]], ...]: ...
 @overload
 def unsqueeze(
     input: Tensor[DType, Unpack[Ts]], dim: L[-1]
@@ -2058,8 +2051,8 @@ def zeros_like(
 ) -> Tensor[DType, Unpack[Ts]]: ...
 @overload
 def randn(
-    size: Tuple[Unpack[Ts]],
-    dtype: Type[DType],
+    size: tuple[Unpack[Ts]],
+    dtype: type[DType],
     *,
     out: Optional[Tensor] = ...,
     layout: Optional[layout] = ...,
@@ -2069,7 +2062,7 @@ def randn(
 @overload
 def randn(
     *size: Unpack[Ts],
-    dtype: Type[DType],
+    dtype: type[DType],
     out: Optional[Tensor] = ...,
     layout: Optional[layout] = ...,
     device: _device = ...,
@@ -2077,10 +2070,10 @@ def randn(
 ) -> Tensor[DType, Unpack[Ts]]: ...
 @overload
 def randn(
-    size: Tuple[Unpack[Ts]],
+    size: tuple[Unpack[Ts]],
     *,
     out: Optional[Tensor] = ...,
-    dtype: Type[float32] = ...,
+    dtype: type[float32] = ...,
     layout: Optional[layout] = ...,
     device: _device = ...,
     requires_grad: builtins.bool = ...,
@@ -2089,7 +2082,7 @@ def randn(
 def randn(
     *size: Unpack[Ts],
     out: Optional[Tensor] = ...,
-    dtype: Type[float32] = ...,
+    dtype: type[float32] = ...,
     layout: Optional[layout] = ...,
     device: _device = ...,
     requires_grad: builtins.bool = ...,
@@ -2112,7 +2105,7 @@ def all(
 def randperm(
     n: N,
     *,
-    dtype: Type[DType],
+    dtype: type[DType],
     generator: Optional[Generator] = ...,
     out: Optional[Tensor] = ...,
     layout: Optional[layout] = ...,
@@ -2126,7 +2119,7 @@ def randperm(
     *,
     generator: Optional[Generator] = ...,
     out: Optional[Tensor] = ...,
-    dtype: Type[float32] = ...,
+    dtype: type[float32] = ...,
     layout: Optional[layout] = ...,
     device: Union[_device, str, None] = ...,
     pin_memory: builtins.bool = ...,
@@ -2143,7 +2136,7 @@ def where(
 ) -> Tensor[
     DType,
     Unpack[
-        Broadcast[Broadcast[Tuple[Unpack[Ts]], Tuple[Unpack[Rs]]], Tuple[Unpack[Rs2]]]
+        Broadcast[Broadcast[tuple[Unpack[Ts]], tuple[Unpack[Rs]]], tuple[Unpack[Rs2]]]
     ],
 ]: ...
 
@@ -2180,21 +2173,21 @@ def argsort(
 # Input tuple has 2 elements.
 @overload
 def cat(
-    tensors: Tuple[Tensor[DType, Unpack[Rs], N1], Tensor[DType, Unpack[Rs], N2]],
+    tensors: tuple[Tensor[DType, Unpack[Rs], N1], Tensor[DType, Unpack[Rs], N2]],
     dim: L[-1],
     *,
     out: Any = ...,
 ) -> Tensor[DType, Unpack[Rs], Add[N1, N2]]: ...
 @overload
 def cat(
-    tensors: Tuple[Tensor[DType, N, N1, Unpack[Rs]], Tensor[DType, N, N2, Unpack[Rs]]],
+    tensors: tuple[Tensor[DType, N, N1, Unpack[Rs]], Tensor[DType, N, N2, Unpack[Rs]]],
     dim: L[1],
     *,
     out: Any = ...,
 ) -> Tensor[DType, N, Add[N1, N2], Unpack[Rs]]: ...
 @overload
 def cat(
-    tensors: Tuple[Tensor[DType, N1, Unpack[Rs]], Tensor[DType, N2, Unpack[Rs]]],
+    tensors: tuple[Tensor[DType, N1, Unpack[Rs]], Tensor[DType, N2, Unpack[Rs]]],
     dim: L[0] = ...,
     *,
     out: Any = ...,
@@ -2203,7 +2196,7 @@ def cat(
 # Input tuple has 3 elements.
 @overload
 def cat(
-    tensors: Tuple[
+    tensors: tuple[
         Tensor[DType, Unpack[Rs], N1],
         Tensor[DType, Unpack[Rs], N2],
         Tensor[DType, Unpack[Rs], N3],
@@ -2214,7 +2207,7 @@ def cat(
 ) -> Tensor[DType, Unpack[Rs], Add[Add[N1, N2], N3]]: ...
 @overload
 def cat(
-    tensors: Tuple[
+    tensors: tuple[
         Tensor[DType, N, N1, Unpack[Rs]],
         Tensor[DType, N, N2, Unpack[Rs]],
         Tensor[DType, N, N3, Unpack[Rs]],
@@ -2225,7 +2218,7 @@ def cat(
 ) -> Tensor[DType, N, Add[Add[N1, N2], N3], Unpack[Rs]]: ...
 @overload
 def cat(
-    tensors: Tuple[
+    tensors: tuple[
         Tensor[DType, N1, Unpack[Rs]],
         Tensor[DType, N2, Unpack[Rs]],
         Tensor[DType, N3, Unpack[Rs]],
@@ -2244,7 +2237,7 @@ def cat(
     dim: builtins.int = ...,
     *,
     out: Any = ...,
-) -> Tensor[DType, Unpack[Tuple[Any, ...]]]: ...
+) -> Tensor[DType, Unpack[tuple[Any, ...]]]: ...
 
 save: Any
 manual_seed: Any
@@ -2258,8 +2251,8 @@ def sign(
 @overload
 def sparse_coo_tensor(
     indices: Tensor,
-    values: Union[Tensor, List[Any]],
-    size: Tuple[Unpack[Rs]],
+    values: Union[Tensor, list[Any]],
+    size: tuple[Unpack[Rs]],
     *,
     dtype: Optional[DType],
     device: Union[_device, str, None] = ...,
@@ -2268,20 +2261,20 @@ def sparse_coo_tensor(
 @overload
 def sparse_coo_tensor(
     indices: Tensor,
-    values: Union[Tensor, List[Any]],
-    size: Tuple[Unpack[Rs]],
+    values: Union[Tensor, list[Any]],
+    size: tuple[Unpack[Rs]],
     *,
-    dtype: Type[float32] = ...,
+    dtype: type[float32] = ...,
     device: Union[_device, str, None] = ...,
     requires_grad: builtin_bool = ...,
 ) -> Tensor[float32, Unpack[Rs]]: ...
 @overload
 def sparse_coo_tensor(
     indices: Tensor,
-    values: Union[Tensor, List[Any]],
+    values: Union[Tensor, list[Any]],
     size: L[None] = ...,
     *,
-    dtype: Type[Any] = ...,
+    dtype: type[Any] = ...,
     device: Union[_device, str, None] = ...,
     requires_grad: builtin_bool = ...,
 ) -> Tensor: ...
@@ -2291,7 +2284,7 @@ def softmax(
 ) -> Tensor[DType, Unpack[Ts]]: ...
 @overload
 def softmax(
-    input: Tensor[DType, Unpack[Ts]], dim: builtins.int, dtype: Type[DType2] = ...
+    input: Tensor[DType, Unpack[Ts]], dim: builtins.int, dtype: type[DType2] = ...
 ) -> Tensor[DType2, Unpack[Ts]]: ...
 @overload
 def transpose(
@@ -2315,8 +2308,8 @@ def transpose(
 ) -> Tensor[DType, N1, N3, N2, Unpack[Rs]]: ...
 @overload
 def empty(
-    size: Tuple[Unpack[Ts]],
-    dtype: Type[DType],
+    size: tuple[Unpack[Ts]],
+    dtype: type[DType],
     *,
     out: Optional[Tensor] = ...,
     layout: Optional[layout] = ...,
@@ -2326,7 +2319,7 @@ def empty(
 @overload
 def empty(
     *size: Unpack[Ts],
-    dtype: Type[DType],
+    dtype: type[DType],
     out: Optional[Tensor] = ...,
     layout: Optional[layout] = ...,
     device: _device = ...,
@@ -2336,10 +2329,10 @@ def empty(
 ) -> Tensor[DType, Unpack[Ts]]: ...
 @overload
 def empty(
-    size: Tuple[Unpack[Ts]],
+    size: tuple[Unpack[Ts]],
     *,
     out: Optional[Tensor] = ...,
-    dtype: Type[float32] = ...,
+    dtype: type[float32] = ...,
     layout: Optional[layout] = ...,
     device: _device = ...,
     requires_grad: builtins.bool = ...,
@@ -2350,7 +2343,7 @@ def empty(
 def empty(
     *size: Unpack[Ts],
     out: Optional[Tensor] = ...,
-    dtype: Type[float32] = ...,
+    dtype: type[float32] = ...,
     layout: Optional[layout] = ...,
     device: _device = ...,
     requires_grad: builtins.bool = ...,
@@ -2389,15 +2382,15 @@ def flatten(
 ) -> Tensor[DType, L[1]]: ...
 @overload
 def reshape(
-    input: Tensor[DType, Unpack[Rs]], shape: Tuple[L[-1], Unpack[Rs2]]
+    input: Tensor[DType, Unpack[Rs]], shape: tuple[L[-1], Unpack[Rs2]]
 ) -> Tensor[DType, Divide[Product[Unpack[Rs]], Product[Unpack[Rs2]]], Unpack[Rs2]]: ...
 @overload
 def reshape(
-    input: Tensor[DType, Unpack[Rs]], shape: Tuple[N1, L[-1], Unpack[Rs2]]
+    input: Tensor[DType, Unpack[Rs]], shape: tuple[N1, L[-1], Unpack[Rs2]]
 ) -> Tensor[
     DType, N1, Divide[Product[Unpack[Rs]], Product[N1, Unpack[Rs2]]], Unpack[Rs2]
 ]: ...
 @overload
 def reshape(
-    input: Tensor[DType, Unpack[Rs]], shape: Tuple[Unpack[Rs2]]
+    input: Tensor[DType, Unpack[Rs]], shape: tuple[Unpack[Rs2]]
 ) -> Tensor[DType, Unpack[Rs2]]: ...

@@ -4,9 +4,10 @@
 # LICENSE file in the root directory of this source tree.
 
 
-from typing import Optional, Type, TypeVar
+from typing import Optional, TypeVar
 
 import torch
+
 
 Self = TypeVar("Self", bound="AttentionMask")
 
@@ -42,7 +43,7 @@ class AttentionMask:
         return self.values != float("-inf")
 
     @classmethod
-    def from_bool(cls: Type[Self], x: torch.Tensor) -> Self:
+    def from_bool(cls: type[Self], x: torch.Tensor) -> Self:
         """
         Create an AttentionMask given a boolean pattern.
         .. warning: we assume here that True implies that the value should be computed
@@ -56,7 +57,7 @@ class AttentionMask:
         return cls(additive_mask)
 
     @classmethod
-    def from_multiplicative(cls: Type[Self], x: torch.Tensor) -> Self:
+    def from_multiplicative(cls: type[Self], x: torch.Tensor) -> Self:
         """
         Create an AttentionMask given a multiplicative attention mask.
         """
@@ -72,7 +73,7 @@ class AttentionMask:
 
     @classmethod
     def make_causal(
-        cls: Type[Self],
+        cls: type[Self],
         seq_len: int,
         to_seq_len: Optional[int] = None,
         device: Optional[torch.device] = None,

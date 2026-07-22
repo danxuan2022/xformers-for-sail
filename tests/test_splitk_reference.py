@@ -3,13 +3,13 @@
 # This source code is licensed under the BSD license found in the
 # LICENSE file in the root directory of this source tree.
 
-from typing import Optional, Tuple
+from typing import Optional
 
 import pytest
-import torch
-
 import xformers.ops
 from xformers.ops import fmha
+
+import torch
 
 from .utils import assert_allclose, disable_tf32, ref_attention_for_test
 
@@ -178,8 +178,8 @@ def test_splitk_reference(
     d = 256
     num_queries = 1
     if kv_heads is not None and kv_heads > 1:
-        k_shape: Tuple[int, ...] = (1, bsz * padding, kv_heads, n_heads, d)
-        q_shape: Tuple[int, ...] = (
+        k_shape: tuple[int, ...] = (1, bsz * padding, kv_heads, n_heads, d)
+        q_shape: tuple[int, ...] = (
             1,
             bsz * num_queries,
             kv_heads,

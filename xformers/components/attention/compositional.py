@@ -20,7 +20,7 @@ from typing import Optional
 
 import torch
 import torch.nn.functional as F
-from torch import Tensor, nn
+from torch import nn, Tensor
 
 from xformers.components.attention import (
     Attention,
@@ -148,9 +148,9 @@ class CompositionalAttention(Attention):
         self.dim_head = dim_model // num_heads
         self.value_dim = dim_attn // num_rules
 
-        assert (
-            self.value_dim * num_rules == dim_attn
-        ), "value_dim must be divisible by num_rules"
+        assert self.value_dim * num_rules == dim_attn, (
+            "value_dim must be divisible by num_rules"
+        )
 
         self.scaling = self.dim_head**-0.5
         self.scaling_values = self.dim_selection**-0.5

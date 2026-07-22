@@ -15,6 +15,7 @@ import torch
 from xformers import _has_cpp_library, _is_triton_available
 from xformers.components.attention.attention_mask import AttentionMask
 
+
 if _has_cpp_library:
     from ._sputnik_sparse import SparseCS
 
@@ -249,7 +250,6 @@ def blocksparse_attention(
     dropout: Optional[torch.nn.Module] = None,
     block_size: int = 128,
 ) -> torch.Tensor:
-
     orig_dim = q.dim()
     seq_len = q.shape[-2]
     # Layout head dimension: 1 or batch size (q.shape[0])

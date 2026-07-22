@@ -5,7 +5,6 @@
 
 
 import torch
-
 from xformers.ops import masked_matmul
 from xformers.sparse import _csr_ops
 from xformers.sparse.utils import (
@@ -66,7 +65,6 @@ class SparseCSRTensor(torch.Tensor):
         vals = x.values()
         _coo_to_csr()
         """
-        pass
 
     @classmethod
     def _wrap(

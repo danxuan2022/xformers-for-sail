@@ -6,7 +6,7 @@
 import math
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Dict, Sequence, Set, cast
+from typing import cast, Sequence
 
 import torch
 
@@ -115,8 +115,8 @@ else:
 
 @dataclass
 class AnalyzedTrace:
-    operations_per_dtype_fw: Dict[torch.dtype, float]
-    operations_per_dtype_bw: Dict[torch.dtype, float]
+    operations_per_dtype_fw: dict[torch.dtype, float]
+    operations_per_dtype_bw: dict[torch.dtype, float]
     total_time_s: float
 
     def compute_num_ops(
@@ -129,13 +129,13 @@ class AnalyzedTrace:
             ops += self.operations_per_dtype_bw.get(dtype, 0.0)
         return ops
 
-    def compute_hfu(self, hardware_flops: Dict[torch.dtype, float]) -> float:
+    def compute_hfu(self, hardware_flops: dict[torch.dtype, float]) -> float:
         hfu_seconds = 0.0
         for dtype, hw_flops in hardware_flops.items():
             hfu_seconds += self.compute_num_ops(dtype) / hw_flops
         return hfu_seconds / self.total_time_s
 
-    def compute_mfu(self, hardware_flops: Dict[torch.dtype, float]) -> float:
+    def compute_mfu(self, hardware_flops: dict[torch.dtype, float]) -> float:
         # Estimated by considering the bw flops should be exactly 2x the fw flops
         # The reason MFU!=HFU is because of recomputation in the BW pass
         hfu_seconds = 0.0
@@ -164,7 +164,7 @@ class AnalyzedTrace:
             )
         ]
 
-        root_ops: Set[torch._C._autograd._KinetoEvent] = set()
+        root_ops: set[torch._C._autograd._KinetoEvent] = set()
 
         def _find_parent_op(
             e: torch._C._autograd._KinetoEvent,
@@ -191,8 +191,8 @@ class AnalyzedTrace:
                 continue
             root_ops.add(_find_parent_op(op))
 
-        operations_per_dtype_fw: Dict[torch.dtype, float] = defaultdict(float)
-        operations_per_dtype_bw: Dict[torch.dtype, float] = defaultdict(float)
+        operations_per_dtype_fw: dict[torch.dtype, float] = defaultdict(float)
+        operations_per_dtype_bw: dict[torch.dtype, float] = defaultdict(float)
         # We detect BW pass ops based on their thread id
         all_bw_threads = {e.start_thread_id() for e in events if e.fwd_thread_id() > 0}
         # Find total dt

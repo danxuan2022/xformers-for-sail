@@ -14,6 +14,7 @@ import random
 import numpy as np
 import tensorflow as tf
 
+
 logging.getLogger().setLevel(logging.INFO)
 
 root_dir = "./datasets/lra_release/lra_release/"

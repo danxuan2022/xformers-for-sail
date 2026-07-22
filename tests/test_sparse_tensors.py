@@ -4,14 +4,16 @@
 # LICENSE file in the root directory of this source tree.
 
 import pytest
-import torch
 
 # needed to register custom ops
 import xformers  # noqa: F401
 from xformers.ops import masked_matmul
 from xformers.sparse import BlockSparseTensor, SparseCSRTensor
 
+import torch
+
 from .utils import disable_tf32
+
 
 cuda_only = pytest.mark.skipif(not torch.cuda.is_available(), reason="requires CUDA")
 _devices = (
@@ -192,9 +194,9 @@ def test_bmm(tensor_type, device):
     res = a_sparse @ b2
 
     assert res.dtype == res_gt.dtype
-    assert torch.allclose(
-        res, res_gt, atol=atol
-    ), f"{torch.max(torch.abs(res-res_gt))} - tolerance: {atol}"
+    assert torch.allclose(res, res_gt, atol=atol), (
+        f"{torch.max(torch.abs(res - res_gt))} - tolerance: {atol}"
+    )
 
     res_gt.sum().backward()
     res.sum().backward()
@@ -203,9 +205,9 @@ def test_bmm(tensor_type, device):
     a_grad[~mask] = 0
 
     assert torch.allclose(b.grad, b2.grad, atol=atol)
-    assert torch.allclose(
-        a_grad, a_sparse.grad.to_dense(), atol=atol
-    ), f"{torch.max(torch.abs(a_grad-a_sparse.grad.to_dense()))}"
+    assert torch.allclose(a_grad, a_sparse.grad.to_dense(), atol=atol), (
+        f"{torch.max(torch.abs(a_grad - a_sparse.grad.to_dense()))}"
+    )
 
 
 @disable_tf32
@@ -238,9 +240,9 @@ def test_sparse_softmax(tensor_type, device):
     res = res_sparse.to_dense()
 
     assert res.dtype == res_gt.dtype
-    assert torch.allclose(
-        res, res_gt, atol=atol
-    ), f"{torch.max(torch.abs(res- res_gt))}"
+    assert torch.allclose(res, res_gt, atol=atol), (
+        f"{torch.max(torch.abs(res - res_gt))}"
+    )
 
     # WARNING: gradients are modified in-place!
     res_sparse.values().backward(torch.ones_like(res_sparse.values()))
@@ -249,9 +251,9 @@ def test_sparse_softmax(tensor_type, device):
     a_grad = a.grad.clone()
     a_grad[~mask] = 0
 
-    assert torch.allclose(
-        a_grad, a_sparse.grad.to_dense(), atol=atol
-    ), f"{torch.max(torch.abs(a_grad- a_sparse.grad.to_dense()))}"
+    assert torch.allclose(a_grad, a_sparse.grad.to_dense(), atol=atol), (
+        f"{torch.max(torch.abs(a_grad - a_sparse.grad.to_dense()))}"
+    )
 
 
 @pytest.mark.parametrize("tensor_type", _tensor_types)

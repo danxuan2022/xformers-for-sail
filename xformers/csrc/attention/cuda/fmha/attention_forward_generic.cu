@@ -5,9 +5,11 @@
  * This source code is licensed under the BSD-style license found in the
  * LICENSE file in the root directory of this source tree.
  */
+#pragma once
+
+// original include
 #include <cmath>
 #include <mutex>
-
 #include <ATen/Context.h>
 #include <ATen/ScalarOps.h>
 #include <ATen/Tensor.h>
@@ -18,14 +20,37 @@
 #include <c10/util/Optional.h>
 #include <torch/library.h>
 #include <ATen/cuda/CUDAGraphsUtils.cuh>
+#include <iostream> 
+#include <algorithm>
 
+// add for at::empty
+#include <ATen/ops/empty.h>
+#include <ATen/ops/empty_like.h>
+
+#ifdef USE_PPU
+#if defined(__HGGCCC__)
+#ifndef ENABLE_AIU
+#define ENABLE_AIU 1
+#endif
+#else
+#define ENABLE_AIU 0
+#endif
+#include "accutlass.h"
+#include "autogen_ppu/cutlassF.h"
+#include "gemm_kernel_utils_ppu.h"
+#else
 #include "autogen/cutlassF.h"
 #include "kernel_forward.h"
+#endif
+
 #include "pytorch_utils.h"
+
 
 #define USE_MEM_EFF_ATTENTION
 
-namespace {
+// #define DEBUG
+
+// namespace {
 using namespace at;
 /*
   There are 2 modes for using this function.
@@ -132,7 +157,7 @@ efficient_attention_forward_cutlass(
   auto device = in_capture_stream ? at::kCUDA : at::kCPU;
   if (use_dropout) {
     auto gen = at::get_generator_or_default<at::CUDAGeneratorImpl>(
-        c10::nullopt, at::cuda::detail::getDefaultCUDAGenerator());
+        std::nullopt, at::cuda::detail::getDefaultCUDAGenerator());
 
     // See Note [Acquire lock when using random generators]
     std::lock_guard<std::mutex> lock(gen->mutex_);
@@ -171,17 +196,51 @@ efficient_attention_forward_cutlass(
     if (kernel_launched) {
       return;
     }
+#ifdef DEBUG
+    std::cout << "[DEBUG] kSupportsDropout: " << Kernel::kSupportsDropout << ", use_dropout:"<< use_dropout << std::endl;
+#endif
     // Check if this kernel is compatible
     if (!Kernel::kSupportsDropout && use_dropout) {
       return;
     }
+#ifdef DEBUG
+    std::cout << "[DEBUG] kSupportsBias: " << Kernel::kSupportsBias << ", bias.has_value():" << bias.has_value()<< std::endl;
+#endif
     if (!Kernel::kSupportsBias && bias.has_value()) {
       return;
     }
 
+#ifdef DEBUG
+    std::cout << "[DEBUG] kMaxK: " << Kernel::kMaxK << ", value.size(): " << value.size(3) << std::endl;
+    std::cout << "[DEBUG] kMaxK: " << Kernel::kMaxK << ", key.size(): " << key.size(3) << std::endl;
+#endif
+// remove because modified in kernel_forward.h
+// #ifndef USE_PPU
     if (value.size(3) > Kernel::kMaxK || key.size(3) > Kernel::kMaxK) {
       return;
     }
+// #else
+
+    // if (std::is_same<scalar_t, float>::value || query.size(3) > 256){
+    //   // MaxkTrait defined in cutlassF.h
+    //   static constexpr int kMaxK = MaxkTrait<
+    //   Kernel::kNumWarpsPerBlock,Kernel::kKeysPerBlock, Kernel::kSingleValueIteration>::kMaxK;
+    //   if (value.size(3) > kMaxK || key.size(3) > kMaxK) {
+    //     return;
+    //   }
+    // }
+    // else{
+    //   static constexpr int kMaxK = Kernel::kMaxK;
+    //   if (value.size(3) > kMaxK || key.size(3) > kMaxK) {
+    //     return;
+    //   }
+    // }
+    //static constexpr int kMaxK = Kernel::kHeadDim;
+
+    // static constexpr int kMaxK = MaxkTrait<
+    //       Kernel::kNumWarpsPerBlock,Kernel::kKeysPerBlock, Kernel::kSingleValueIteration>::kMaxK;
+
+// #endif
     // Alignment
     if ((query.stride(2) % Kernel::kAlignmentQ) ||
         (key.stride(2) % Kernel::kAlignmentK) ||
@@ -208,10 +267,11 @@ efficient_attention_forward_cutlass(
          num_heads,
          compute_logsumexp ? ceil_div(max_seqlen_q, kAlignLSE) * kAlignLSE : 0},
         query.options().dtype(at::ScalarType::Float));
+
     typename Kernel::Params p;
-    p.query_ptr = (const scalar_t*)query.const_data_ptr();
-    p.key_ptr = (const scalar_t*)key.const_data_ptr();
-    p.value_ptr = (const scalar_t*)value.const_data_ptr();
+    p.query_ptr = (scalar_t*)query.data_ptr();
+    p.key_ptr = (scalar_t*)key.data_ptr();
+    p.value_ptr = (scalar_t*)value.data_ptr();
     p.logsumexp_ptr = compute_logsumexp
         ? (typename Kernel::lse_scalar_t*)logsumexp.data_ptr()
         : nullptr;
@@ -230,8 +290,8 @@ efficient_attention_forward_cutlass(
     p.output_ptr = (typename Kernel::output_t*)res.data_ptr();
 
     if (seqstart_q.has_value()) {
-      p.seqstart_q_ptr = (const int32_t*)seqstart_q->const_data_ptr();
-      p.seqstart_k_ptr = (const int32_t*)seqstart_k->const_data_ptr();
+      p.seqstart_q_ptr = (int32_t*)seqstart_q->data_ptr();
+      p.seqstart_k_ptr = (int32_t*)seqstart_k->data_ptr();
     }
 
     p.num_heads = num_heads;
@@ -246,12 +306,12 @@ efficient_attention_forward_cutlass(
     if (seqlen_k.has_value()) {
       CHECK_NOSPARSE_LASTCONTIGUOUS_CUDA(seqlen_k.value());
       TORCH_CHECK(seqlen_k->scalar_type() == at::ScalarType::Int);
-      p.seqlen_k_ptr = (const int32_t*)seqlen_k->const_data_ptr();
+      p.seqlen_k_ptr = (int32_t*)seqlen_k->data_ptr();
     }
 
-    if (window_size.has_value()) {
-      p.window_size = *window_size;
-    }
+    // if (window_size.has_value()) {
+    //   p.window_size = *window_size;
+    // }
 
     if (scale.has_value()) {
       p.scale = float(*scale);
@@ -269,13 +329,17 @@ efficient_attention_forward_cutlass(
     ASSIGN_CHECK_OVERFLOW(p.k_strideH, key.stride(2));
     ASSIGN_CHECK_OVERFLOW(p.v_strideH, value.stride(2));
     ASSIGN_CHECK_OVERFLOW(p.o_strideM, res.stride(1));
+#ifdef USE_PPU
+    ASSIGN_CHECK_OVERFLOW(p.o_strideH, res.stride(2));
+    ASSIGN_CHECK_OVERFLOW(p.o_strideB, p.o_strideM * p.num_queries);
+#endif
 
     if (bias.has_value()) {
       CHECK_NOSPARSE_LASTCONTIGUOUS_CUDA((*bias));
       TORCH_CHECK(
           bias->scalar_type() == CutlassToAtenDtype<scalar_t>::atScalarType(),
           "invalid dtype for bias - should match query's dtype");
-      p.attn_bias_ptr = (const scalar_t*)bias->const_data_ptr();
+      p.attn_bias_ptr = (scalar_t*)bias->data_ptr();
 
       TORCH_CHECK(bias->dim() == 4, "Bias expected in BMHK format");
       TORCH_CHECK(
@@ -326,9 +390,18 @@ efficient_attention_forward_cutlass(
   };
 
   // Dispatch to the right kernel
-  DISPATCH_TYPES(query, ([&]() {
-                   dispatch_cutlassF<scalar_t>(launchKernel, computeCapability);
+  // add query.size(3) for dispatch headim > 256 && fp32 kernel, will remove after fully support
+  int max_headDim = std::max(query.size(3), std::max(key.size(3), value.size(3)));
+  if(query.dtype() == at::ScalarType::Float || max_headDim > 256){
+    DISPATCH_TYPES(query, ([&]() {
+                   dispatch_cutlassF_fa1<scalar_t>(launchKernel, computeCapability);
                  }));
+  }
+  else{
+    DISPATCH_TYPES(query, ([&]() {
+                   dispatch_cutlassF_fa2<scalar_t>(launchKernel, computeCapability);
+                 }));
+  }
   TORCH_CHECK(kernel_launched, "cutlassF: no kernel found to launch!");
   AT_CUDA_CHECK(cudaGetLastError());
 
@@ -359,9 +432,20 @@ bool has_cutlassF_kernel_for(
     if (found) {
       return;
     }
+// comment because modified in kernel_forward.h
+// #ifndef USE_PPU
     if (dim_k > Kernel::kMaxK) {
       return;
     }
+// #else
+    // static constexpr int kMaxK = Kernel::kHeadDim;
+    // static constexpr int kMaxK = MaxkTrait<
+    //       Kernel::kNumWarpsPerBlock,Kernel::kKeysPerBlock, Kernel::kSingleValueIteration>::kMaxK;
+//     if (dim_k > kMaxK) {
+
+//       return;
+//     }
+// #endif
     size_t smem_bytes = sizeof(typename Kernel::SharedStorage);
     if (smem_bytes > maxShmem) {
       return;
@@ -369,23 +453,27 @@ bool has_cutlassF_kernel_for(
     found = true;
   };
   if (dtype == at::ScalarType::Float) {
-    dispatch_cutlassF<float>(callback, cc);
+    dispatch_cutlassF_fa1<float>(callback, cc);
   } else if (dtype == at::ScalarType::Half) {
-    dispatch_cutlassF<cutlass::half_t>(callback, cc);
+    dispatch_cutlassF_fa2<cutlass::half_t>(callback, cc);
   } else {
     TORCH_CHECK(dtype == at::ScalarType::BFloat16, "invalid data type");
-    dispatch_cutlassF<cutlass::bfloat16_t>(callback, cc);
+    dispatch_cutlassF_fa2<cutlass::bfloat16_t>(callback, cc);
   }
   return found;
 }
-} // namespace
+// } // namespace
 
+// Enable xformers operator registration when building via xformers setup.py
+// By default (building through PyTorch), this is disabled
+#if defined(XFORMERS_ENABLE_ATTENTION_OPS)
 TORCH_LIBRARY_IMPL(xformers, CUDA, m) {
   m.impl(
       TORCH_SELECTIVE_NAME("xformers::efficient_attention_forward_cutlass"),
       TORCH_FN(efficient_attention_forward_cutlass));
 }
-
+#endif
+#if 0
 TORCH_LIBRARY_FRAGMENT(xformers, m) {
   m.def(TORCH_SELECTIVE_SCHEMA(
       "xformers::_has_cutlassF_kernel_for(ScalarType dtype, int cc, int maxShmem, int maxK) -> bool"));
@@ -393,3 +481,4 @@ TORCH_LIBRARY_FRAGMENT(xformers, m) {
       TORCH_SELECTIVE_NAME("xformers::_has_cutlassF_kernel_for"),
       TORCH_FN(has_cutlassF_kernel_for));
 }
+#endif

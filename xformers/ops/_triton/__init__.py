@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 
 import xformers
 
+
 if TYPE_CHECKING or xformers._is_triton_available():
     from .k_index_select_cat import index_select_cat_bwd, index_select_cat_fwd
     from .k_scaled_index_add import scaled_index_add_bwd, scaled_index_add_fwd

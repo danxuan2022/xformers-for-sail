@@ -6,10 +6,11 @@
 import random
 
 import pytest
-import torch
-
 from xformers import _is_triton_available
 from xformers.ops.tiled_matmul import tiled_matmul
+
+import torch
+
 
 cuda_only = pytest.mark.skipif(not torch.cuda.is_available(), reason="requires CUDA")
 compute_capability = (0, 0)

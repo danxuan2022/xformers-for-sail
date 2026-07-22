@@ -15,13 +15,14 @@ from xformers.utils import (
 
 from .base import Feedforward, FeedforwardConfig  # noqa
 
+
 # CREDITS: Classy Vision registry mechanism
 
-FEEDFORWARD_REGISTRY: Dict[str, Any] = {}
-FEEDFORWARD_CLASS_NAMES: Set[str] = set()
+FEEDFORWARD_REGISTRY: dict[str, Any] = {}
+FEEDFORWARD_CLASS_NAMES: set[str] = set()
 
 
-def build_feedforward(config: Union[Dict[str, Any], FeedforwardConfig]):
+def build_feedforward(config: Union[dict[str, Any], FeedforwardConfig]):
     """Builds a feedforward from a config.
 
     This assumes a 'name' key in the config which is used to determine what
@@ -59,13 +60,14 @@ def build_feedforward(config: Union[Dict[str, Any], FeedforwardConfig]):
             ...
 
     To instantiate a feedforward from a configuration file, see :func:`build_feedforward`."""
-register_feedforward: Callable[
-    [str, Any], Callable[[Any], Any]
-] = get_registry_decorator(
-    FEEDFORWARD_REGISTRY, FEEDFORWARD_CLASS_NAMES, Feedforward, FeedforwardConfig
+register_feedforward: Callable[[str, Any], Callable[[Any], Any]] = (
+    get_registry_decorator(
+        FEEDFORWARD_REGISTRY, FEEDFORWARD_CLASS_NAMES, Feedforward, FeedforwardConfig
+    )
 )
 
 from .mlp import MLP  # noqa
+
 
 __all__ = [
     "MLP",

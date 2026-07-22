@@ -4,13 +4,14 @@
 # LICENSE file in the root directory of this source tree.
 
 import pytest
-import torch
-
 from xformers.components.positional_embedding import RotaryEmbedding
 from xformers.components.positional_embedding.rotary import (
     apply_rotary_pos_emb,
     rotate_half,
 )
+
+import torch
+
 
 DEVICES = (
     [torch.device("cpu")]

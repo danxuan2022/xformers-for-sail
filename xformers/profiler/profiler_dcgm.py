@@ -8,6 +8,7 @@ import sys
 
 from .profiler import _Profiler, logger
 
+
 DCGM_PROFILER_AVAILABLE = False
 try:
     DCGM_PYTHON_PATH: str = "/usr/local/dcgm/bindings/python3"

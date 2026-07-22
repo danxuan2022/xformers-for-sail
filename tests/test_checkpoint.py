@@ -8,9 +8,6 @@ from contextlib import nullcontext
 from copy import deepcopy
 
 import pytest
-import torch
-from torch import nn
-
 import xformers.ops
 from xformers.checkpoint import (
     _optimize_runtime_with_given_memory,
@@ -19,6 +16,10 @@ from xformers.checkpoint import (
     list_operators,
     selective_checkpoint_wrapper,
 )
+
+import torch
+from torch import nn
+
 
 cuda_only = pytest.mark.skipif(not torch.cuda.is_available(), reason="requires CUDA")
 _devices = ["cpu"]
@@ -179,9 +180,9 @@ def test_checkpoint_attention(policy_fn, input_requires_grad, device, autocast, 
     out.sum().backward()
     out_copy.sum().backward()
     for p, p_copy in zip(modules.parameters(), modules_copy.parameters()):
-        assert torch.allclose(
-            p.grad, p_copy.grad
-        ), f"{(p.grad - p_copy.grad).abs().max()}"
+        assert torch.allclose(p.grad, p_copy.grad), (
+            f"{(p.grad - p_copy.grad).abs().max()}"
+        )
 
     if input_requires_grad:
         assert torch.allclose(inputs.grad, inputs_copy.grad)

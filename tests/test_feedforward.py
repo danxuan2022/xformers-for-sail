@@ -4,12 +4,13 @@
 # LICENSE file in the root directory of this source tree.
 
 import pytest
-import torch
-
 from xformers.components import Activation
-from xformers.components.feedforward import FEEDFORWARD_REGISTRY, build_feedforward
+from xformers.components.feedforward import build_feedforward, FEEDFORWARD_REGISTRY
 from xformers.components.feedforward.mixture_of_experts import GateConfig
 from xformers.helpers.test_utils import init_torch_distributed_local
+
+import torch
+
 
 BATCH = 4
 SEQ = 256

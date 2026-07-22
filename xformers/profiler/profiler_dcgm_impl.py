@@ -4,13 +4,14 @@
 # LICENSE file in the root directory of this source tree.
 
 
-from typing import List, Optional, Set, Tuple, Union
+from typing import Optional, Union
 
 import dcgm_fields
-import torch
 from dcgm_fields import DcgmFieldGetById
 from dcgm_structs import DCGM_GROUP_EMPTY, DCGM_OPERATION_MODE_AUTO
 from pydcgm import DcgmFieldGroup, DcgmGroup, DcgmHandle
+
+import torch
 
 from .profiler import _Profiler, logger
 
@@ -21,7 +22,7 @@ class DCGMProfiler:
     def __init__(
         self,
         main_profiler: "_Profiler",
-        gpus_to_profile: Optional[Tuple[int, ...]] = None,
+        gpus_to_profile: Optional[tuple[int, ...]] = None,
         field_ids_to_profile=(
             dcgm_fields.DCGM_FI_PROF_SM_ACTIVE,
             dcgm_fields.DCGM_FI_PROF_SM_OCCUPANCY,
@@ -63,7 +64,7 @@ class DCGMProfiler:
         self.dcgmFieldGroup = self.create_profiling_field_group(field_ids_to_profile)
 
     def create_dcgm_group(
-        self, gpus_to_profile: Union[Tuple[int], Tuple[int, ...]]
+        self, gpus_to_profile: Union[tuple[int], tuple[int, ...]]
     ) -> Optional[DcgmGroup]:
         if self.dcgmHandle is None:
             return None
@@ -71,7 +72,7 @@ class DCGMProfiler:
         dcgmSystem = self.dcgmHandle.GetSystem()
         supportedGPUs = dcgmSystem.discovery.GetAllSupportedGpuIds()
 
-        valid_gpus_to_profile: List[int] = [
+        valid_gpus_to_profile: list[int] = [
             gpu for gpu in gpus_to_profile if gpu in supportedGPUs
         ]
         if len(valid_gpus_to_profile) < 1:
@@ -93,7 +94,7 @@ class DCGMProfiler:
 
         return dcgmGroup
 
-    def get_profilable_fields(self) -> Set[int]:
+    def get_profilable_fields(self) -> set[int]:
         assert self.dcgmGroup is not None
 
         dcgmMetricGroups = self.dcgmGroup.profiling.GetSupportedMetricGroups()
@@ -106,7 +107,7 @@ class DCGMProfiler:
 
     def create_profiling_field_group(
         self,
-        fieldIdsToProfile: Optional[Tuple[int, ...]],
+        fieldIdsToProfile: Optional[tuple[int, ...]],
     ) -> Optional[DcgmFieldGroup]:
         if self.dcgmGroup is None:
             return None

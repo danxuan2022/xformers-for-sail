@@ -5,7 +5,6 @@
 
 import torch
 from torch.cuda.amp import autocast
-
 from xformers.components.attention import Attention, AttentionConfig, register_attention
 
 

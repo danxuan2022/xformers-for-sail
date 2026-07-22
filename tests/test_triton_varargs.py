@@ -7,14 +7,14 @@ import logging
 import sys
 
 import pytest
+import xformers
+
 import torch
 
-import xformers
 
 try:
     import triton
     import triton.language as tl
-
     from xformers.triton.vararg_kernel import unroll_varargs
 
     _triton_available = xformers._is_triton_available()
@@ -37,7 +37,7 @@ def test_triton_varargs_kernel():
     def sumN(output_ptr, scaling_ptr, *inputs, BLOCK_SIZE: tl.constexpr):
         offset = tl.arange(0, BLOCK_SIZE)
         output = tl.zeros([BLOCK_SIZE], tl.float32)
-        scaling: "VAR_ARGS_ARRAY"  # type: ignore # noqa: F821
+        scaling: VAR_ARGS_ARRAY  # type: ignore # noqa: F821
         for i in range(len(scaling)):
             scaling[i] = tl.load(scaling_ptr + i)
 

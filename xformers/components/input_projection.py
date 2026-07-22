@@ -9,10 +9,11 @@
 
 import logging
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Optional
 
 import torch
 from torch import nn
+
 
 logger = logging.getLogger("xformers")
 
@@ -36,7 +37,6 @@ class InputProjection(nn.Module):
         value_proj_params: Optional[InputProjectionConfig],
         use_separate_proj_weight: bool = True,
     ):
-
         super().__init__()
 
         self.out_features = query_proj_params.out_features
@@ -85,7 +85,7 @@ class InputProjection(nn.Module):
         query: torch.Tensor,
         key: torch.Tensor,
         value: torch.Tensor,
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         # One projection per input tensor
 
         # NOTE: Would it make sense to catch self attention + shared weights, to skip a projection step ?

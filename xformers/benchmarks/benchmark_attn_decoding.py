@@ -7,14 +7,15 @@
 # See other CLI arguments in benchmark_main_helper in utils.py.
 
 import sys
-from typing import Any, Dict, Type
+from typing import Any
 
 import pytest
-import torch
 
+import torch
 import xformers.ops as xops
 from xformers.attn_bias_utils import create_attn_bias
-from xformers.benchmarks.utils import NotSupportedInputError, benchmark_main_helper2
+from xformers.benchmarks.utils import benchmark_main_helper2, NotSupportedInputError
+
 
 min_run_time = 0.5
 device = torch.device("cuda")
@@ -284,7 +285,7 @@ class AttentionDecodingPyTorchRepeat(AttentionDecodingBase):
         return attn @ v
 
 
-BENCHMARKS: Dict[str, Type[AttentionDecodingBase]] = {
+BENCHMARKS: dict[str, type[AttentionDecodingBase]] = {
     "pytorch": AttentionDecodingPyTorchRepeat,
 }
 
@@ -320,9 +321,9 @@ try:
                 v = v[:, :, :, 0]
             return flash_attn.flash_attn_func(q, k, v)
 
-    BENCHMARKS[
-        f"flash-attention@{flash_attn.__version__}"
-    ] = AttentionDecodingFlashAttention
+    BENCHMARKS[f"flash-attention@{flash_attn.__version__}"] = (
+        AttentionDecodingFlashAttention
+    )
 except ImportError:
     pass
 

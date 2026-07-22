@@ -6,9 +6,10 @@
 
 from abc import abstractmethod
 from dataclasses import asdict, dataclass
-from typing import Optional, Type, TypeVar
+from typing import Optional, TypeVar
 
 import torch
+
 
 """
 Feature maps allow for a given query or key to be encoded in a different space.
@@ -48,10 +49,10 @@ class FeatureMap(torch.nn.Module):
 
     @abstractmethod
     def _get_feature_map(self, dim_input: int, dim_features: int, device: torch.device):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     @classmethod
-    def from_config(cls: Type[Self], config: FeatureMapConfig) -> Self:
+    def from_config(cls: type[Self], config: FeatureMapConfig) -> Self:
         # Generate the class inputs from the config
         fields = asdict(config)
 

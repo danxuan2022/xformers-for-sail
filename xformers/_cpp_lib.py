@@ -8,9 +8,10 @@ import json
 import logging
 import os
 import platform
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import torch
+
 
 logger = logging.getLogger("xformers")
 
@@ -21,7 +22,7 @@ UNAVAILABLE_FEATURES_MSG = (
 
 @dataclasses.dataclass
 class _BuildInfo:
-    metadata: Dict[str, Any]
+    metadata: dict[str, Any]
 
     @property
     def cuda_version(self) -> Optional[int]:
@@ -48,7 +49,7 @@ class _BuildInfo:
         return self.metadata["version"].get("use_torch_flash", False)
 
     @property
-    def build_env(self) -> Dict[str, Any]:
+    def build_env(self) -> dict[str, Any]:
         return self.metadata["env"]
 
 
@@ -124,9 +125,9 @@ def _register_extensions():
     else:
         ext_specs = extfinder.find_spec("_C")
     if ext_specs is None:
-        raise xFormersWasNotBuiltException()
+        raise xFormersWasNotBuiltException
     cpp_lib_json = os.path.join(lib_dir, "cpp_lib.json")
-    with open(cpp_lib_json, "r") as fp:
+    with open(cpp_lib_json) as fp:
         build_metadata = _BuildInfo(json.load(fp))
     try:
         torch.ops.load_library(ext_specs.origin)

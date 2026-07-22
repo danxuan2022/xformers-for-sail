@@ -5,9 +5,9 @@
 
 
 import pytest
-import torch
-
 from xformers.components.attention import AttentionMask
+
+import torch
 
 
 @pytest.mark.skipif(

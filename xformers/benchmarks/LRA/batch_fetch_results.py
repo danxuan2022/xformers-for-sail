@@ -8,7 +8,8 @@ import argparse
 import json
 import logging
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
+
 
 if __name__ == "__main__":
     # Get the user requests
@@ -24,7 +25,7 @@ if __name__ == "__main__":
     root = Path(args.checkpoint_path)
 
     # - list all the mechanisms being benchmarked
-    results: Dict[str, Any] = {}
+    results: dict[str, Any] = {}
 
     for attention in filter(lambda x: x.is_dir(), root.iterdir()):
         logging.info(f"\nFound results for {attention.stem}")
@@ -38,7 +39,7 @@ if __name__ == "__main__":
             found_result = False
 
             # - collect the individual results
-            with open(task, "r") as result_file:
+            with open(task) as result_file:
                 dct = json.load(result_file)
                 if "test_accu_mean" in dct:
                     found_result = True
@@ -60,7 +61,7 @@ if __name__ == "__main__":
                 )
                 err_log = Path(task.parent).glob("*.err")
                 print("*****************************************************")
-                with open(next(err_log), "r") as err_file:
+                with open(next(err_log)) as err_file:
                     for i, line in enumerate(reversed(err_file.readlines())):
                         print(line, end="")
                         if i > ERR_TAIL:
@@ -85,12 +86,7 @@ if __name__ == "__main__":
     tasks_sort = sorted(
         set(t for v in results.values() for t in v.keys()), reverse=True
     )
-    print(
-        "{0:<20}".format("") + "".join("{0:<20}   ".format(t[:10]) for t in tasks_sort)
-    )
+    print("{0:<20}".format("") + "".join(f"{t[:10]:<20}   " for t in tasks_sort))
 
     for att in results.keys():
-        print(
-            "{0:<20}".format(att)
-            + "".join("{0:<20}   ".format(results[att][t]) for t in tasks_sort)
-        )
+        print(f"{att:<20}" + "".join(f"{results[att][t]:<20}   " for t in tasks_sort))

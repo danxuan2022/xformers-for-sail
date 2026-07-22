@@ -5,18 +5,18 @@
 
 import os
 import random
-from typing import Tuple
 
 import pytest
-import torch
-
 from xformers import _is_triton_available
 from xformers.ops import (
     sequence_parallel_leading_matmul,
     sequence_parallel_trailing_matmul,
 )
 
+import torch
+
 from .multiprocessing_utils import launch_subprocesses
+
 
 compute_capability = (0, 0)
 if torch.cuda.is_available():
@@ -71,7 +71,7 @@ def xformers_trailing(hidden, w, *, fuse, group):
 def inner_seqpar(
     kind: str,
     step: str,
-    dims: Tuple[int, ...],
+    dims: tuple[int, ...],
     dtype: torch.dtype,
     seed: int,
 ):
@@ -262,7 +262,7 @@ def inner_seqpar(
 def test_seqpar(
     kind: str,
     step: str,
-    dims: Tuple[int, ...],
+    dims: tuple[int, ...],
     dtype: torch.dtype,
 ):
     world_size = 1 if kind == "singleton" else 2

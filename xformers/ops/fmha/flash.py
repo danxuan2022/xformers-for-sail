@@ -6,7 +6,7 @@
 
 import os
 from itertools import zip_longest
-from typing import Any, Iterable, List, Optional, Set, Tuple, Union
+from typing import Any, Iterable, Optional, Union
 
 import torch
 
@@ -32,12 +32,13 @@ from .attn_bias import (
 from .common import (
     AttentionBwOpBase,
     AttentionFwOpBase,
+    check_lastdim_alignment_stride1,
     Context,
     Gradients,
     Inputs,
-    check_lastdim_alignment_stride1,
 )
 from .torch_attention_compat import is_pt_flash_compatible
+
 
 FLASH_VERSION = "0.0.0"
 FLASH_SUPPORTS_UNPADDED_LSE = False
@@ -355,7 +356,7 @@ try:
 
     def _create_dq_dk_dv(
         grads_share_storage: bool, query, key, value
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         # Create dq,dk,dv
         # If Q/K/V come from a single QKV tensor, let's put the gradient in the
         # right strides, so we can avoid a `cat`
@@ -375,7 +376,7 @@ except ImportError:
 def _convert_input_format(
     inp: Inputs,
     supports_mqa: bool,
-) -> Tuple[
+) -> tuple[
     Inputs,
     Optional[torch.Tensor],
     int,
@@ -495,8 +496,8 @@ def _is_paged_attention_supported(attn_bias_type) -> bool:
 
 
 def _window_size(
-    attn_bias: Optional[Union[torch.Tensor, AttentionBias]]
-) -> Tuple[int, int]:
+    attn_bias: Optional[Union[torch.Tensor, AttentionBias]],
+) -> tuple[int, int]:
     win_left = -1
     win_right = -1
     if isinstance(
@@ -514,7 +515,7 @@ def _window_size(
     return (win_left, win_right)
 
 
-def _check_needs_no_topleft(d: Inputs, reasons: List[str]) -> None:
+def _check_needs_no_topleft(d: Inputs, reasons: list[str]) -> None:
     # Flash does not support TopLeft, so only allow causal masks with TopLeft
     # if each batch element has equal number of queries and keys.
     if isinstance(d.attn_bias, BlockDiagonalCausalMask):
@@ -532,11 +533,11 @@ def _check_needs_no_topleft(d: Inputs, reasons: List[str]) -> None:
     elif isinstance(d.attn_bias, LowerTriangularMask):
         if d.query.shape[1] != d.key.shape[1]:
             reasons.append(
-                "Only support LowerTriangularMask if equal number of" "keys and queries"
+                "Only support LowerTriangularMask if equal number ofkeys and queries"
             )
 
 
-def _check_strides_for_bmghk(x: torch.Tensor, name: str, reasons: List[str]) -> None:
+def _check_strides_for_bmghk(x: torch.Tensor, name: str, reasons: list[str]) -> None:
     """
     We want to be able to collapse the G/H dimensions together
     """
@@ -557,7 +558,7 @@ def _check_strides_for_bmghk(x: torch.Tensor, name: str, reasons: List[str]) -> 
 def _post_process_lse(
     lse: torch.Tensor,
     inp: Inputs,
-    original_query_shape: Tuple[int, ...],
+    original_query_shape: tuple[int, ...],
     unpadded_lse: bool,
 ) -> torch.Tensor:
     if not inp.is_partial:
@@ -599,9 +600,9 @@ class FwOp(AttentionFwOpBase):
     """
 
     OPERATOR = get_operator("xformers_flash", "flash_fwd")
-    SUPPORTED_DEVICES: Set[str] = {"cuda"}
+    SUPPORTED_DEVICES: set[str] = {"cuda"}
     CUDA_MINIMUM_COMPUTE_CAPABILITY = (8, 0)
-    SUPPORTED_DTYPES: Set[torch.dtype] = {torch.half, torch.bfloat16}
+    SUPPORTED_DTYPES: set[torch.dtype] = {torch.half, torch.bfloat16}
     SUPPORTED_MAX_K = 256
     SUPPORTED_ATTN_BIAS_TYPES: Iterable[Any] = (
         type(None),
@@ -639,7 +640,7 @@ class FwOp(AttentionFwOpBase):
     VERSION = FLASH_VERSION
 
     @classmethod
-    def not_supported_reasons(cls, d: Inputs) -> List[str]:
+    def not_supported_reasons(cls, d: Inputs) -> list[str]:
         reasons = super(FwOp, cls).not_supported_reasons(d)
         check_lastdim_alignment_stride1(reasons, "query", d.query, 8)
         _check_needs_no_topleft(d, reasons)
@@ -668,7 +669,7 @@ class FwOp(AttentionFwOpBase):
     @classmethod
     def apply(
         cls, inp: Inputs, needs_gradient: bool
-    ) -> Tuple[torch.Tensor, Optional[Context]]:
+    ) -> tuple[torch.Tensor, Optional[Context]]:
         return_softmax = False
         original_query_shape = inp.query.shape
 
@@ -833,7 +834,7 @@ class BwOp(AttentionBwOpBase):
     MAX_HEADDIM_DROPOUT_SM8x = 224
 
     @classmethod
-    def not_supported_reasons(cls, d: Inputs) -> List[str]:
+    def not_supported_reasons(cls, d: Inputs) -> list[str]:
         reasons = super(BwOp, cls).not_supported_reasons(d)
         check_lastdim_alignment_stride1(reasons, "query", d.query, 8)
         _check_needs_no_topleft(d, reasons)

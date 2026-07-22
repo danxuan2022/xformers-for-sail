@@ -37,12 +37,12 @@
 
 #include <cuda_fp16.h>
 
-#include "cutlass/array.h"
-#include "cutlass/cutlass.h"
-#include "cutlass/epilogue/thread/activation.h"
-#include "cutlass/functional.h"
-#include "cutlass/numeric_conversion.h"
-#include "cutlass/numeric_types.h"
+#include "cutlass2/array.h"
+#include "cutlass2/cutlass.h"
+#include "cutlass2/epilogue/thread/activation.h"
+#include "cutlass2/functional.h"
+#include "cutlass2/numeric_conversion.h"
+#include "cutlass2/numeric_types.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////
 

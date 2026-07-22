@@ -7,7 +7,7 @@
 from dataclasses import replace
 from enum import Enum
 from functools import partial
-from typing import Any, Iterable, List, Mapping, Optional, Set, Tuple, Union
+from typing import Any, Iterable, Mapping, Optional, Union
 
 import torch
 
@@ -27,13 +27,13 @@ from .attn_bias import (
     LowerTriangularMaskWithTensorBias,
 )
 from .common import (
+    _attn_bias_apply,
     AttentionBwOpBase,
     AttentionFwOpBase,
+    check_lastdim_alignment_stride1,
     Context,
     Gradients,
     Inputs,
-    _attn_bias_apply,
-    check_lastdim_alignment_stride1,
 )
 
 
@@ -43,7 +43,7 @@ def _minimum_gemm_alignment(inp: Inputs) -> int:
 
 def _get_seqlen_info(
     inp: Inputs,
-) -> Tuple[Optional[torch.Tensor], Optional[torch.Tensor], int, int]:
+) -> tuple[Optional[torch.Tensor], Optional[torch.Tensor], int, int]:
     attn_bias = inp.attn_bias
     if isinstance(
         attn_bias, (BlockDiagonalMask, BlockDiagonalCausalWithOffsetPaddedKeysMask)
@@ -64,7 +64,7 @@ def _get_seqlen_info(
 
 
 def _get_tensor_bias(
-    attn_bias: Optional[Union[torch.Tensor, AttentionBias]]
+    attn_bias: Optional[Union[torch.Tensor, AttentionBias]],
 ) -> Optional[torch.Tensor]:
     if isinstance(attn_bias, AttentionBiasSubTensor):
         if isinstance(attn_bias, LowerTriangularMaskWithTensorBias):
@@ -75,7 +75,7 @@ def _get_tensor_bias(
 
 
 def _check_bias_alignment(
-    reasons: List[str], attn_bias: Optional[Union[torch.Tensor, AttentionBias]]
+    reasons: list[str], attn_bias: Optional[Union[torch.Tensor, AttentionBias]]
 ) -> None:
     attn_bias_tensor = _get_tensor_bias(attn_bias)
     if attn_bias_tensor is not None:
@@ -102,7 +102,7 @@ Example: use `attn_bias = torch.zeros([1, 1, 5, 8])[:,:,:,:5]` instead of `torch
             )
 
 
-def _check_large_shapes(reasons: List[str], inp: Inputs) -> None:
+def _check_large_shapes(reasons: list[str], inp: Inputs) -> None:
     """CK kernel throws "Memory access fault by GPU node-2" when B * T >= 2**20, might be some index overflow.
     To reproduce, remove this function and run benchmark_mem_eff_attention with ParlAI model shape (256, 4096, 16, 64).
     This needs further debugging, for now let's not support such shapes.
@@ -156,8 +156,8 @@ class FwOp(AttentionFwOpBase):
     """xFormers' MHA kernel based on Composable Kernel."""
 
     OPERATOR = get_xformers_operator("efficient_attention_forward_ck")
-    SUPPORTED_DEVICES: Set[str] = {"cuda"}
-    SUPPORTED_DTYPES: Set[torch.dtype] = {torch.half, torch.bfloat16}
+    SUPPORTED_DEVICES: set[str] = {"cuda"}
+    SUPPORTED_DTYPES: set[torch.dtype] = {torch.half, torch.bfloat16}
     SUPPORTED_MAX_K = 256
 
     SUPPORTED_ATTN_BIAS_TYPES: Iterable[Any] = (
@@ -192,7 +192,7 @@ class FwOp(AttentionFwOpBase):
         torch.bfloat16: 2e-2,
     }
 
-    _TEST_K: List[int] = [
+    _TEST_K: list[int] = [
         32,  # 64x64 kernel
         128,  # 64x128 kernel
         256,  # 64x128 with accumulation in gmem
@@ -201,7 +201,7 @@ class FwOp(AttentionFwOpBase):
     @classmethod
     def apply(
         cls, inp: Inputs, needs_gradient: bool
-    ) -> Tuple[torch.Tensor, Optional[Context]]:
+    ) -> tuple[torch.Tensor, Optional[Context]]:
         if type(inp.attn_bias) not in FwOp.SUPPORTED_ATTN_BIAS_TYPES:
             raise NotImplementedError("Unsupported attn_bias type")
         if inp.query.ndim in [3, 4]:
@@ -265,7 +265,7 @@ class FwOp(AttentionFwOpBase):
     @classmethod
     def apply_bmhk(
         cls, inp: Inputs, needs_gradient: bool
-    ) -> Tuple[torch.Tensor, Optional[Context]]:
+    ) -> tuple[torch.Tensor, Optional[Context]]:
         if type(inp.attn_bias) not in FwOp.SUPPORTED_ATTN_BIAS_TYPES:
             raise NotImplementedError("Unsupported attn_bias type")
         seqstart_k, seqstart_q, max_seqlen_q, _ = _get_seqlen_info(inp)
@@ -319,7 +319,7 @@ class FwOp(AttentionFwOpBase):
         return out, ctx
 
     @classmethod
-    def not_supported_reasons(cls, d: Inputs) -> List[str]:
+    def not_supported_reasons(cls, d: Inputs) -> list[str]:
         reasons = super(FwOp, cls).not_supported_reasons(d)
         matmul_alignment_mn = _minimum_gemm_alignment(d)
         check_lastdim_alignment_stride1(reasons, "query", d.query, matmul_alignment_mn)
@@ -380,14 +380,14 @@ class BwOp(AttentionBwOpBase):
     SUPPORTS_DIFFERENT_VALUE_EMBED = FwOp.SUPPORTS_DIFFERENT_VALUE_EMBED
     NAME = "ckB"
 
-    _TEST_K: List[int] = [
+    _TEST_K: list[int] = [
         32,  # 64x64 kernel
         64,
         128,  # 64x128/128x128 kernel
     ]
 
     @classmethod
-    def not_supported_reasons(cls, d: Inputs) -> List[str]:
+    def not_supported_reasons(cls, d: Inputs) -> list[str]:
         reasons = super(BwOp, cls).not_supported_reasons(d)
         matmul_alignment_mn = _minimum_gemm_alignment(d)
 

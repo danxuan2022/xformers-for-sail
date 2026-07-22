@@ -13,23 +13,24 @@ from xformers.utils import import_all_modules
 from .activations import Activation, build_activation  # noqa
 from .attention import Attention, build_attention  # noqa
 from .input_projection import InputProjection, InputProjectionConfig  # noqa
-from .multi_head_dispatch import MultiHeadDispatch  # noqa
-from .multi_head_dispatch import MultiHeadDispatchConfig
-from .patch_embedding import PatchEmbeddingConfig  # noqa
-from .patch_embedding import build_patch_embedding  # noqa
-from .residual import NormalizationType  # noqa
-from .residual import PostNorm  # noqa
-from .residual import PreNorm  # noqa
-from .residual import RequiresWrappedInputs  # noqa
-from .residual import Residual  # noqa
-from .residual import ResidualNormStyle  # noqa
+from .multi_head_dispatch import MultiHeadDispatch, MultiHeadDispatchConfig  # noqa
+from .patch_embedding import build_patch_embedding, PatchEmbeddingConfig  # noqa  # noqa
+from .residual import (  # noqa  # noqa  # noqa  # noqa  # noqa  # noqa
+    NormalizationType,
+    PostNorm,
+    PreNorm,
+    RequiresWrappedInputs,
+    Residual,
+    ResidualNormStyle,
+)
+
 
 # automatically import any Python files in the directory
 import_all_modules(str(Path(__file__).parent), "xformers.components")
 
 
 def build_multi_head_attention(
-    multi_head_config: Union[MultiHeadDispatchConfig, Dict[str, Any]],
+    multi_head_config: Union[MultiHeadDispatchConfig, dict[str, Any]],
 ):
     """Builds a multihead attention from a config.
 

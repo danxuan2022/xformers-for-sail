@@ -45,16 +45,16 @@
 
 #pragma once
 
-#include "cutlass/array.h"
-#include "cutlass/coord.h"
-#include "cutlass/cutlass.h"
-#include "cutlass/layout/matrix.h"
-#include "cutlass/layout/pitch_linear.h"
-#include "cutlass/matrix_shape.h"
-#include "cutlass/predicate_vector.h"
-#include "cutlass/tensor_ref.h"
-#include "cutlass/tensor_view.h"
-#include "cutlass/transform/threadblock/predicated_tile_access_iterator_params.h"
+#include "cutlass2/array.h"
+#include "cutlass2/coord.h"
+#include "cutlass2/cutlass.h"
+#include "cutlass2/layout/matrix.h"
+#include "cutlass2/layout/pitch_linear.h"
+#include "cutlass2/matrix_shape.h"
+#include "cutlass2/predicate_vector.h"
+#include "cutlass2/tensor_ref.h"
+#include "cutlass2/tensor_view.h"
+#include "cutlass2/transform/threadblock/predicated_tile_access_iterator_params.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 

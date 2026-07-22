@@ -6,7 +6,7 @@
 import logging
 import math
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Optional
 
 import torch
 import torch.nn as nn
@@ -21,6 +21,7 @@ from xformers.components.attention.feature_maps import (
     SMReg,
 )
 
+
 logger = logging.getLogger("xformers")
 
 
@@ -28,12 +29,12 @@ logger = logging.getLogger("xformers")
 class FavorAttentionConfig(AttentionConfig):
     causal: Optional[bool]
     dim_features: Optional[int] = None  # The dimensions of the random features
-    dim_head: Optional[
-        int
-    ] = None  # The embedding dimension of the inputs. Only useful to get a dim_features estimate
-    iter_before_redraw: Optional[
-        int
-    ] = None  # The number of iterations before the random features are re-drawn from scratch
+    dim_head: Optional[int] = (
+        None  # The embedding dimension of the inputs. Only useful to get a dim_features estimate
+    )
+    iter_before_redraw: Optional[int] = (
+        None  # The number of iterations before the random features are re-drawn from scratch
+    )
     feature_map: Optional[FeatureMapType] = None
 
 
@@ -118,7 +119,7 @@ class FavorAttention(Attention):
     @staticmethod
     def _causal_attention(
         k_prime: torch.Tensor, q_prime: torch.Tensor, v: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         # Algorithm 1 in the paper
         ref_v = torch.ones_like(v.unsqueeze(2))  # BATCH x SEQ x 1 x EMB
         Gps = k_prime.unsqueeze(3) * v.unsqueeze(2)
@@ -142,7 +143,6 @@ class FavorAttention(Attention):
         *_,
         **__,
     ):
-
         # Project key and queries onto the feature map space
         k_prime = self.feature_map(k)
         q_prime = self.feature_map(q)

@@ -9,7 +9,7 @@ import time
 from collections import defaultdict
 from copy import deepcopy
 from dataclasses import astuple, dataclass
-from typing import Any, Callable, ContextManager, Dict, List, Optional, Tuple
+from typing import Any, Callable, ContextManager, Optional
 
 import torch
 from torch.testing._internal.composite_compliance import (
@@ -19,6 +19,7 @@ from torch.testing._internal.composite_compliance import (
 )
 from torch.utils._python_dispatch import TorchDispatchMode
 from torch.utils._pytree import tree_map
+
 
 _scipy_is_available = False
 try:
@@ -74,7 +75,7 @@ class ProfileMetadata:
     memory_used: float
     curr_idx: int
     output_ids: Any
-    inplace_info: Tuple[int, int]
+    inplace_info: tuple[int, int]
     is_view_like: bool
     is_rand_op: bool
 
@@ -160,7 +161,7 @@ def selective_checkpoint_context_fn(policy_fn=None):
     else:
         assert callable(policy_fn), "policy_fn should be None, list or a callable"
 
-    temp_storage: Dict[Any, List[Any]] = defaultdict(list)
+    temp_storage: dict[Any, list[Any]] = defaultdict(list)
     # assumption: grad_mode doesn't change inside function
     caching_mode: ContextManager[None]
     if torch.is_grad_enabled():
@@ -208,10 +209,10 @@ def checkpoint(
 
 class ProfileOperatorsTorchDispatchMode(TorchDispatchMode):
     def __init__(self, num_runs: int = 10) -> None:
-        self.data: List[ProfileMetadata] = []
+        self.data: list[ProfileMetadata] = []
         self.num_runs: int = num_runs
 
-    def _get_inplace_metadata(self, func, out) -> Tuple[int, int, Tuple[int, ...]]:
+    def _get_inplace_metadata(self, func, out) -> tuple[int, int, tuple[int, ...]]:
         curr_idx = len(self.data)
 
         def get_tensor_id(e):
@@ -284,7 +285,7 @@ class ProfileOperatorsTorchDispatchMode(TorchDispatchMode):
         return out
 
 
-def _analyze_operators(function, *args) -> List[ProfileMetadata]:
+def _analyze_operators(function, *args) -> list[ProfileMetadata]:
     """
     Use ProfileOperatorsTorchDispatchMode to get runtime and memory info.
 
@@ -387,9 +388,9 @@ def _optimize_runtime_with_given_memory(
     memory: torch.Tensor,
     runtimes: torch.Tensor,
     max_memory: float,
-    view_like_ops: List[int],
-    inplace_ops: List[Tuple[int, ...]],
-    random_ops: List[int],
+    view_like_ops: list[int],
+    inplace_ops: list[tuple[int, ...]],
+    random_ops: list[int],
     force_store_random: bool,
 ) -> torch.Tensor:
     """
@@ -486,9 +487,7 @@ class SelectiveCheckpointWrapper(ActivationWrapper):
 
         try:
             # for backward-compatibility as this doesn't exist in PT anymore
-            torch._dynamo.config._experimental_support_context_fn_in_torch_utils_checkpoint = (
-                True
-            )
+            torch._dynamo.config._experimental_support_context_fn_in_torch_utils_checkpoint = True
         except AttributeError:
             pass
 

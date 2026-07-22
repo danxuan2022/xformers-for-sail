@@ -15,13 +15,14 @@ from xformers.utils import (
 
 from .base import PositionEmbedding, PositionEmbeddingConfig  # noqa
 
+
 # CREDITS: Classy Vision registry mechanism
 
-POSITION_EMBEDDING_REGISTRY: Dict[str, Any] = {}
-POSITION_EMBEDDING_CLASS_NAMES: Set[str] = set()
+POSITION_EMBEDDING_REGISTRY: dict[str, Any] = {}
+POSITION_EMBEDDING_CLASS_NAMES: set[str] = set()
 
 
-def build_positional_embedding(config: Union[Dict[str, Any], PositionEmbeddingConfig]):
+def build_positional_embedding(config: Union[dict[str, Any], PositionEmbeddingConfig]):
     """Builds a position encoding from a config.
 
     This assumes a 'name' key in the config which is used to determine what
@@ -59,19 +60,20 @@ def build_positional_embedding(config: Union[Dict[str, Any], PositionEmbeddingCo
             ...
 
     To instantiate a position encoding from a configuration file, see :func:`build_positional_embedding`."""
-register_positional_embedding: Callable[
-    [str, Any], Callable[[Any], Any]
-] = get_registry_decorator(
-    POSITION_EMBEDDING_REGISTRY,
-    POSITION_EMBEDDING_CLASS_NAMES,
-    PositionEmbedding,
-    PositionEmbeddingConfig,
+register_positional_embedding: Callable[[str, Any], Callable[[Any], Any]] = (
+    get_registry_decorator(
+        POSITION_EMBEDDING_REGISTRY,
+        POSITION_EMBEDDING_CLASS_NAMES,
+        PositionEmbedding,
+        PositionEmbeddingConfig,
+    )
 )
 
 
 from .rotary import RotaryEmbedding  # noqa
 from .sine import SinePositionalEmbedding  # type: ignore  # noqa
 from .vocab import VocabEmbedding  # noqa
+
 
 __all__ = [
     "RotaryEmbedding",

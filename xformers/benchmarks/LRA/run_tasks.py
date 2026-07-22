@@ -10,17 +10,17 @@ import logging
 import os
 from enum import Enum
 from pathlib import Path
-from typing import Dict, Tuple, cast
+from typing import cast
 
 import pytorch_lightning as pl
-import torch
-import torch.nn as nn
-from fvcore.nn import FlopCountAnalysis, flop_count_str
+from fvcore.nn import flop_count_str, FlopCountAnalysis
 from pytorch_lightning.callbacks import ModelCheckpoint, TQDMProgressBar
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.strategies import DDPStrategy
-from torch.utils.data import DataLoader
 
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader
 from xformers.benchmarks.LRA.code.dataset import LRADataset
 from xformers.benchmarks.LRA.code.model_wrapper import ModelForSC, ModelForSCDual
 from xformers.components.attention import ATTENTION_REGISTRY
@@ -36,8 +36,8 @@ class Task(str, Enum):
     Text = "text"
 
 
-def load_config(path: str) -> Dict:
-    with open(Path(path).absolute(), "r") as fileio:
+def load_config(path: str) -> dict:
+    with open(Path(path).absolute()) as fileio:
         config = json.load(fileio)
 
     # Duplicate the pathfinder configs
@@ -47,7 +47,7 @@ def load_config(path: str) -> Dict:
     return config
 
 
-def build_model(args: argparse.Namespace, config: Dict) -> nn.Module:
+def build_model(args: argparse.Namespace, config: dict) -> nn.Module:
     task = args.task
     attention_name = args.attention
 
@@ -71,7 +71,7 @@ def build_model(args: argparse.Namespace, config: Dict) -> nn.Module:
         mask = torch.rand(1, seq_len).long()
         indices = torch.rand(1, seq_len).long()
         flops = FlopCountAnalysis(model.model, (x, mask, indices))
-        logging.info(f"complexity: {round(flops.total()/1e9, 3)} GFlops")
+        logging.info(f"complexity: {round(flops.total() / 1e9, 3)} GFlops")
         logging.info(flop_count_str(flops))
 
     return model
@@ -144,7 +144,7 @@ def get_arg_parser():
     return parser
 
 
-def setup_log(args, attention_name, task) -> Tuple[str, TensorBoardLogger]:
+def setup_log(args, attention_name, task) -> tuple[str, TensorBoardLogger]:
     experiment_name = f"{task}__{attention_name}"
     logger = TensorBoardLogger(
         save_dir=args.checkpoint_dir,
@@ -172,9 +172,9 @@ def rewrite_hyper(config, rewrites):
 
 def build_dataloaders(
     args: argparse.Namespace,
-    config_training: Dict,
+    config_training: dict,
     num_workers: int = 4,
-) -> Dict[str, DataLoader]:
+) -> dict[str, DataLoader]:
     datasets = {}
     for component in ("train", "dev", "test"):
         datasets[component] = LRADataset(
@@ -209,8 +209,8 @@ def build_dataloaders(
     return dataloaders
 
 
-def get_eval_summary(trainer: pl.Trainer) -> Dict[str, float]:
-    eval_summary: Dict[str, float] = {"train_step_idx": trainer.global_step}
+def get_eval_summary(trainer: pl.Trainer) -> dict[str, float]:
+    eval_summary: dict[str, float] = {"train_step_idx": trainer.global_step}
     for k, v in trainer.callback_metrics.items():
         eval_summary[k] = v.item()
     return eval_summary

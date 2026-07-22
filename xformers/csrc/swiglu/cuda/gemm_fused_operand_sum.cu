@@ -12,13 +12,13 @@
 #include <c10/cuda/CUDAGuard.h>
 #include <torch/library.h>
 
-#include "cutlass/cutlass.h"
-#include "cutlass/gemm/device/gemm_with_k_reduction.h"
-#include "cutlass/gemm/kernel/default_gemm_with_k_reduction.h"
-#include "cutlass/matrix_coord.h"
-#include "cutlass/reduction/device/reduce_split_k.h"
-#include "cutlass/reduction/kernel/reduce_split_k.h"
-#include "cutlass/reduction/thread/reduction_operators.h"
+#include "cutlass2/cutlass.h"
+#include "cutlass2/gemm/device/gemm_with_k_reduction.h"
+#include "cutlass2/gemm/kernel/default_gemm_with_k_reduction.h"
+#include "cutlass2/matrix_coord.h"
+#include "cutlass2/reduction/device/reduce_split_k.h"
+#include "cutlass2/reduction/kernel/reduce_split_k.h"
+#include "cutlass2/reduction/thread/reduction_operators.h"
 
 namespace {
 template <typename scalar_t>

@@ -12,22 +12,21 @@
 # - Sparse x Dense -> Dense
 # - Dense x Sparse -> Dense
 
-from typing import Any, Dict
+from typing import Any
 
-import torch
 import triton
 from triton.ops.blocksparse import matmul as blocksparse_matmul
 
-from xformers.benchmarks.utils import TestCase, pretty_plot, pretty_print
-from xformers.components.attention.core import SparseCS, _matmul_with_mask
+import torch
+from xformers.benchmarks.utils import pretty_plot, pretty_print, TestCase
+from xformers.components.attention.core import _matmul_with_mask, SparseCS
 
 
 def bench_matmul(dtype: torch.dtype, shapes):
-    results: Dict[str, Any] = {}
+    results: dict[str, Any] = {}
     Z, H = 1, 1
 
     for M, N, K in shapes:
-
         modes = [(mode, block) for mode in ["sdd", "dsd"] for block in [16, 32, 64]]
 
         for mode, block in modes:
@@ -89,9 +88,7 @@ def bench_matmul(dtype: torch.dtype, shapes):
                 "sdd": 2 * Z * K * float(layout.sum()) * block * block,
                 "dsd": 2 * Z * N * float(layout.sum()) * block * block,
                 "dds": 2 * Z * M * float(layout.sum()) * block * block,
-            }[
-                mode
-            ] * 1e-12  # TFlops
+            }[mode] * 1e-12  # TFlops
 
             def torch_step():
                 return torch.matmul(ta, tb)
@@ -132,7 +129,7 @@ def bench_matmul(dtype: torch.dtype, shapes):
 
     pretty_print(
         results,
-        title="\n ------------- Type: {} -------------".format(dtype),
+        title=f"\n ------------- Type: {dtype} -------------",
         units="TFlops/s",
     )
 

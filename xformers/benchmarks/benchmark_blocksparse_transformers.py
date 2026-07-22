@@ -10,10 +10,10 @@ from collections import namedtuple
 from dataclasses import dataclass
 
 import matplotlib.pyplot as plt
-import torch
 import triton
 from triton.ops.blocksparse import matmul as blocksparse_matmul
 
+import torch
 from xformers.benchmarks.utils import pretty_barplot
 from xformers.components.attention.attention_patterns import (
     axial_2d_pattern,
@@ -22,7 +22,8 @@ from xformers.components.attention.attention_patterns import (
     local_1d_pattern,
     local_2d_pattern,
 )
-from xformers.components.attention.core import SparseCS, _matmul_with_mask
+from xformers.components.attention.core import _matmul_with_mask, SparseCS
+
 
 device = "cuda"
 TestCase = namedtuple("TestCase", ["prepare_callable", "mask", "config", "name"])
@@ -396,7 +397,6 @@ class Experiment:
     def bench_all(
         self, a, b, tests, mask_config, sparsity, baseline_name, op_flops, dict_key
     ):
-
         if self.do_accuracy_check:
             self.check_all(tests, a, b)
 

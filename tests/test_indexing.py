@@ -6,10 +6,10 @@
 import random
 
 import pytest
-import torch
-
 import xformers.ops as xops
 from xformers.ops import indexing
+
+import torch
 
 from .utils import assert_allclose
 

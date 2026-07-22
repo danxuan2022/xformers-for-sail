@@ -3,7 +3,7 @@
 # This source code is licensed under the BSD license found in the
 # LICENSE file in the root directory of this source tree.
 
-from typing import Any, Iterable, List, Optional, Set, Tuple
+from typing import Any, Iterable, Optional
 
 import torch
 
@@ -20,8 +20,8 @@ class FwOp(AttentionFwOpBase):
     """
 
     OPERATOR = get_xformers_operator("efficient_attention_forward_decoder_ck")
-    SUPPORTED_DEVICES: Set[str] = {"cuda"}
-    SUPPORTED_DTYPES: Set[torch.dtype] = {torch.half, torch.bfloat16, torch.float}
+    SUPPORTED_DEVICES: set[str] = {"cuda"}
+    SUPPORTED_DTYPES: set[torch.dtype] = {torch.half, torch.bfloat16, torch.float}
     SUPPORTED_MAX_K: int = 256
     SUPPORTED_ATTN_BIAS_TYPES: Iterable[Any] = (
         type(None),
@@ -33,7 +33,7 @@ class FwOp(AttentionFwOpBase):
     NAME = "ck_decoderF"
 
     @classmethod
-    def not_supported_reasons(cls, d: Inputs) -> List[str]:
+    def not_supported_reasons(cls, d: Inputs) -> list[str]:
         reasons = super(FwOp, cls).not_supported_reasons(d)
 
         attn_bias = d.attn_bias
@@ -87,7 +87,7 @@ class FwOp(AttentionFwOpBase):
     @classmethod
     def apply(
         cls, inp: Inputs, needs_gradient: bool
-    ) -> Tuple[torch.Tensor, Optional[Context]]:
+    ) -> tuple[torch.Tensor, Optional[Context]]:
         if needs_gradient:
             raise NotImplementedError("backward pass is not supported")
         attn_bias = inp.attn_bias

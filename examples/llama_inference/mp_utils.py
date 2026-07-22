@@ -10,6 +10,7 @@ from typing import Optional
 import torch
 from torch.distributed import ProcessGroup
 
+
 _GROUP: Optional[ProcessGroup] = None
 _WORLD_SIZE: Optional[int] = None
 _LOCAL_RANK: int = 0

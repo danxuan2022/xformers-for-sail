@@ -4,12 +4,13 @@
 # LICENSE file in the root directory of this source tree.
 
 import pytest
-import torch
-
 from xformers.components import MultiHeadDispatch
 
 # Automatically test all the registered attentions
 from xformers.components.attention import ATTENTION_REGISTRY, build_attention
+
+import torch
+
 
 DEVICES = (
     [torch.device("cpu")] if not torch.cuda.is_available() else [torch.device("cuda")]
@@ -44,7 +45,6 @@ def test_build_and_run(
     nonlinear: bool,
     device: torch.device,
 ):
-
     torch.manual_seed(42)
 
     test_config = {

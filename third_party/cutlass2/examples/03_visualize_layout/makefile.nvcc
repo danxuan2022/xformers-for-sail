@@ -1,0 +1,24 @@
+BIN=${APP_NAME}
+NVCC=${CUDA_ROOT}/bin/nvcc
+
+NVCC_FLAGS = -v -std=c++11 -g \
+    -Xcompiler=-fPIC -Xcompiler=-Wconversion \
+    -DCUTLASS_ENABLE_CUBLAS=1 -DCUTLASS_ENABLE_CUDNN=1 \
+    -DCUTLASS_ENABLE_TENSOR_CORE_MMA=1 -DCUTLASS_TEST_LEVEL=0 -DCUTLASS_DEBUG_TRACE_LEVEL=0 \
+    -isystem=${CUDA_ROOT}/include \
+    -I${PWD} -I${CUTLASS_ROOT}/include \
+    -I${CUTLASS_ROOT}/examples/common -I${CUTLASS_ROOT}/tools/util/include \
+    -L${CUDA_ROOT}/lib64 -lcudadevrt -lcuda -lcudart_static -lrt -lpthread -ldl
+
+ifeq (${PLATFORM},ppu)
+  NVCC_FLAGS+=  -isystem=${PPU_SDK}/include -L${PPU_SDK}/lib
+else
+  $(info $(PLATFORM) )
+  $(info "Not add ppu include dir")
+endif
+
+GENCODES = -arch=sm_80
+TARGET = ${BIN}.${PLATFORM}
+
+${TARGET} : ${BIN}.cpp
+	${NVCC} ${NVCC_FLAGS} ${GENCODES} -x cu -o ${TARGET} register_layout.cu ${BIN}.cpp

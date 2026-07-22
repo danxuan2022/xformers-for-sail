@@ -5,10 +5,10 @@
 import random
 
 import pytest
-import torch
-
 from xformers.components.attention import NystromAttention, ScaledDotProduct
 from xformers.components.attention.utils import maybe_merge_masks
+
+import torch
 
 
 @pytest.mark.parametrize("pinverse_original_init", [True, False])
@@ -139,9 +139,9 @@ def test_nystrom_attention(
         r_sdp = sdp_attention(a, a, a, att_mask=mask)
 
         # Not very close, but more so testing functionality.
-        assert torch.allclose(
-            r_nystrom, r_sdp, rtol=0.1, atol=0.5
-        ), f"max diff {torch.max(torch.abs(r_nystrom-r_sdp))}"
+        assert torch.allclose(r_nystrom, r_sdp, rtol=0.1, atol=0.5), (
+            f"max diff {torch.max(torch.abs(r_nystrom - r_sdp))}"
+        )
 
         # Error when key padding mask doesn't have expected dimensions.
         key_padding_mask = torch.randint(0, 2, (s, b)).to(dtype=torch.bool)

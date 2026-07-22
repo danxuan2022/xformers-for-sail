@@ -6,20 +6,20 @@
 
 import logging
 from dataclasses import asdict
-from typing import Optional, Tuple, Union
+from typing import Optional, Union
 
 import torch
 import torch.nn as nn
 
 from xformers._deprecation_warning import deprecated_function
 from xformers.components import (
+    build_multi_head_attention,
+    build_patch_embedding,
     PatchEmbeddingConfig,
     PostNorm,
     PreNorm,
     Residual,
     ResidualNormStyle,
-    build_multi_head_attention,
-    build_patch_embedding,
 )
 from xformers.components.attention import AttentionMask
 from xformers.components.feedforward import build_feedforward
@@ -31,6 +31,7 @@ from xformers.factory.block_configs import (
     xFormerDecoderConfig,
     xFormerEncoderConfig,
 )
+
 
 logger = logging.getLogger("xformers")
 
@@ -190,7 +191,7 @@ class xFormerEncoderBlock(torch.nn.Module):
         return cls(config)
 
     @staticmethod
-    def get_reversible_layer(config) -> Tuple[nn.Module, nn.Module]:
+    def get_reversible_layer(config) -> tuple[nn.Module, nn.Module]:
         ln_factory = _get_ln_factory(
             config.dim_model,
             config.residual_norm_style,
@@ -262,7 +263,6 @@ class xFormerDecoderBlock(torch.nn.Module):
             mha_dim = config.multi_head_config_masked["dim_model"]
 
             if pos_encoding_dim != mha_dim:
-
                 logger.warning(
                     f"The embedding dim and model dim do not match ({pos_encoding_dim} vs {mha_dim}), adding a projector layer."  # noqa
                 )

@@ -8,14 +8,14 @@
 #pragma once
 
 #include <cutlass/cutlass.h>
-#include "cutlass/aligned_buffer.h"
-#include "cutlass/array.h"
-#include "cutlass/layout/matrix.h"
-#include "cutlass/layout/pitch_linear.h"
-#include "cutlass/numeric_types.h"
-#include "cutlass/transform/pitch_linear_thread_map.h"
-#include "cutlass/transform/threadblock/predicated_tile_iterator.h"
-#include "cutlass/transform/threadblock/regular_tile_iterator.h"
+#include "cutlass2/aligned_buffer.h"
+#include "cutlass2/array.h"
+#include "cutlass2/layout/matrix.h"
+#include "cutlass2/layout/pitch_linear.h"
+#include "cutlass2/numeric_types.h"
+#include "cutlass2/transform/pitch_linear_thread_map.h"
+#include "cutlass2/transform/threadblock/predicated_tile_iterator.h"
+#include "cutlass2/transform/threadblock/regular_tile_iterator.h"
 
 template <
     typename scalar_t, // scalar type

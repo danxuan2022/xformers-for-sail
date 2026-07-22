@@ -5,9 +5,10 @@
 
 from typing import Optional
 
-import torch
 import triton
 import triton.language as tl
+
+import torch
 
 
 @triton.jit
@@ -93,12 +94,12 @@ def scaled_index_add_fwd(
     if not x.shape[1] == source.shape[1]:
         raise ValueError(
             f"The number of elements along dimension 1 of the input and source must be the same "
-            f"(got {x.shape[1], } and {source.shape[1], })!"
+            f"(got {(x.shape[1],)} and {(source.shape[1],)})!"
         )
     if not x.shape[2] == source.shape[2]:
         raise ValueError(
             f"The number of elements along dimension 2 of the input and source must be the same "
-            f"(got {x.shape[2], } and {source.shape[2], })!"
+            f"(got {(x.shape[2],)} and {(source.shape[2],)})!"
         )
 
     num_inp_indices, num_rows, num_cols = x.shape
@@ -275,12 +276,12 @@ def scaled_index_add_bwd(
     if not grad_output.shape[1] == source.shape[1]:
         raise ValueError(
             f"The number of elements along dimension 1 of the input and source must be the same "
-            f"(got {grad_output.shape[1], } and {source.shape[1], })!"
+            f"(got {(grad_output.shape[1],)} and {(source.shape[1],)})!"
         )
     if not grad_output.shape[2] == source.shape[2]:
         raise ValueError(
             f"The number of elements along dimension 2 of the input and source must be the same "
-            f"(got {grad_output.shape[2], } and {source.shape[2], })!"
+            f"(got {(grad_output.shape[2],)} and {(source.shape[2],)})!"
         )
 
     num_inp_indices, num_rows, num_cols = grad_output.shape

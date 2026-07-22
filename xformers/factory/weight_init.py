@@ -20,6 +20,7 @@ from torch.nn.init import (
     _no_grad_uniform_,
 )
 
+
 logger = logging.getLogger("xformers")
 
 
@@ -187,9 +188,9 @@ def _init_weights_vit_moco(
 ):
     """ViT weight initialization, matching moco-v3 impl minus fixed PatchEmbed"""
 
-    assert (
-        "deepnorm_style" not in kwargs.keys()
-    ), "This initialization method does not support deepnorm"
+    assert "deepnorm_style" not in kwargs.keys(), (
+        "This initialization method does not support deepnorm"
+    )
 
     if is_ffn(name):
         _maybe_init_tensor(module, "weight", torch.nn.init.xavier_uniform_, gain=gain)

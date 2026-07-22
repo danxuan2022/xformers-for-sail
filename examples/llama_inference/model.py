@@ -4,17 +4,17 @@
 # LICENSE file in the root directory of this source tree.
 
 from dataclasses import dataclass
-from typing import Optional, Tuple, Union
+from typing import Optional, Union
 
 import mp_utils
-import torch
-from torch import nn
-from torch.nn import functional as F
-
-from xformers.ops import RMSNorm, fmha, rope_padded
+from xformers.ops import fmha, RMSNorm, rope_padded
 from xformers.ops.fmha.attn_bias import (
     BlockDiagonalCausalWithOffsetPaddedKeysMask as AttnBias,
 )
+
+import torch
+from torch import nn
+from torch.nn import functional as F
 
 
 @dataclass
@@ -45,7 +45,7 @@ class ModelArgs:
     """
 
 
-LayerCache = Tuple[torch.Tensor, torch.Tensor]
+LayerCache = tuple[torch.Tensor, torch.Tensor]
 
 
 class Attention(nn.Module):

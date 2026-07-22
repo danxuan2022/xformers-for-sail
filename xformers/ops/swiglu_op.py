@@ -4,7 +4,7 @@
 # LICENSE file in the root directory of this source tree.
 
 from dataclasses import dataclass
-from typing import Dict, Optional, Sequence, Tuple, Union
+from typing import Optional, Sequence, Union
 
 import torch
 import torch.nn.functional as F
@@ -12,6 +12,7 @@ from torch import nn
 
 from .common import BaseOperator, get_xformers_operator, register_operator
 from .unbind import stack_or_none, unbind
+
 
 if torch.version.hip:
 
@@ -22,7 +23,7 @@ if torch.version.hip:
         b1: Optional[torch.Tensor],
         w2: torch.Tensor,
         b2: Optional[torch.Tensor],
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         x1 = x @ w1.T
         if b1 is not None:
             x1 += b1
@@ -136,7 +137,7 @@ class _SwiGLUFusedFunc(torch.autograd.Function):
     @staticmethod
     def _linear_bw(
         dy: torch.Tensor, x: torch.Tensor, bias: bool
-    ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
+    ) -> tuple[torch.Tensor, Optional[torch.Tensor]]:
         if not bias:
             return (dy.transpose(-2, -1) @ x), None
         db = torch.empty([dy.shape[1]], dtype=dy.dtype, device=dy.device)
@@ -199,7 +200,7 @@ class SwiGLUOp:
         return all(c(op) for c in self.constraints)
 
     def __call__(self, *args: Optional[torch.Tensor]) -> torch.Tensor:
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def __str__(self) -> str:
         return f"SwiGLUOp:{self.NAME}"
@@ -323,7 +324,7 @@ SwiGLUEagerOp = _ForwardToFunc(
 )
 
 
-def _info() -> Dict[str, str]:
+def _info() -> dict[str, str]:
     return {op.NAME: op.info() for op in [SwiGLUPackedFusedOp]}
 
 
@@ -496,16 +497,16 @@ class SwiGLU(nn.Module):
         """
         if self.w12 is not None:
             if self.op is not None:
-                assert (
-                    self.op.PACKED_WEIGHTS
-                ), "_pack_weights and self.op.PACKED_WEIGHTS should match"
+                assert self.op.PACKED_WEIGHTS, (
+                    "_pack_weights and self.op.PACKED_WEIGHTS should match"
+                )
                 return swiglu_packed(x, *self._packed_ordered_params(), op=self.op)
 
         return swiglu(x, *self._ordered_params(), op=self.op)
 
     def _ordered_params(
         self,
-    ) -> Tuple[
+    ) -> tuple[
         torch.Tensor,
         Optional[torch.Tensor],
         torch.Tensor,
@@ -542,7 +543,7 @@ class SwiGLU(nn.Module):
 
     def _packed_ordered_params(
         self,
-    ) -> Tuple[
+    ) -> tuple[
         torch.Tensor,
         Optional[torch.Tensor],
         torch.Tensor,

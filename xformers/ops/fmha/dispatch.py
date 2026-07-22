@@ -6,14 +6,15 @@
 
 import textwrap
 from collections import deque
-from typing import List, Sequence, Type, TypeVar
+from typing import Sequence, TypeVar
 
 import torch
 
 from . import attn_bias, ck, cutlass, decoder, flash, small_k, triton_splitk
 from .common import AttentionBwOpBase, AttentionFwOpBase, Inputs
 
-T = TypeVar("T", Type[AttentionFwOpBase], Type[AttentionBwOpBase])
+
+T = TypeVar("T", type[AttentionFwOpBase], type[AttentionBwOpBase])
 
 
 def _format_inputs_description(inp: Inputs) -> str:
@@ -30,17 +31,17 @@ def _ensure_op_supports_or_raise(exc_type, name: str, op, inp: Inputs) -> None:
         return
     raise exc_type(
         f"""Operator `{name}` does not support inputs:
-{textwrap.indent(_format_inputs_description(inp), '     ')}
+{textwrap.indent(_format_inputs_description(inp), "     ")}
 {_format_not_supported_reasons(op, reasons)}"""
     )
 
 
-def _format_not_supported_reasons(op, reasons: List[str]) -> str:
+def _format_not_supported_reasons(op, reasons: list[str]) -> str:
     return f"`{op.NAME}` is not supported because:\n    " + "\n    ".join(reasons)
 
 
 def _run_priority_list(name: str, priority_list: Sequence[T], inp: Inputs) -> T:
-    not_supported_reasons: List[List[str]] = []
+    not_supported_reasons: list[list[str]] = []
     for op in priority_list:
         not_supported = op.not_supported_reasons(inp)
         if not not_supported:
@@ -49,7 +50,7 @@ def _run_priority_list(name: str, priority_list: Sequence[T], inp: Inputs) -> T:
 
     # Let's write a nice message explaining what we tried and why it's not supported
     msg = f"""No operator found for `{name}` with inputs:
-{textwrap.indent(_format_inputs_description(inp), '     ')}"""
+{textwrap.indent(_format_inputs_description(inp), "     ")}"""
     for op, not_supported in zip(priority_list, not_supported_reasons):
         msg += "\n" + _format_not_supported_reasons(op, not_supported)
     raise NotImplementedError(msg)
@@ -57,7 +58,7 @@ def _run_priority_list(name: str, priority_list: Sequence[T], inp: Inputs) -> T:
 
 def _dispatch_fw_priority_list(
     inp: Inputs, needs_gradient: bool
-) -> Sequence[Type[AttentionFwOpBase]]:
+) -> Sequence[type[AttentionFwOpBase]]:
     if torch.version.cuda:
         priority_list_ops = deque(
             [
@@ -107,7 +108,7 @@ def _dispatch_fw_priority_list(
     return priority_list_ops
 
 
-def _dispatch_fw(inp: Inputs, needs_gradient: bool) -> Type[AttentionFwOpBase]:
+def _dispatch_fw(inp: Inputs, needs_gradient: bool) -> type[AttentionFwOpBase]:
     """Computes the best operator for forward
 
     Raises:
@@ -127,9 +128,9 @@ def _is_cutlassB_faster_than_flash(inp: Inputs) -> bool:
     return False
 
 
-def _dispatch_bw(inp: Inputs, is_unpadded_lse: bool = False) -> Type[AttentionBwOpBase]:
+def _dispatch_bw(inp: Inputs, is_unpadded_lse: bool = False) -> type[AttentionBwOpBase]:
     if torch.version.cuda:
-        priority_list_ops: List[Type[AttentionBwOpBase]] = [
+        priority_list_ops: list[type[AttentionBwOpBase]] = [
             flash.BwOp,
             cutlass.BwOp,
             # CUDA illegal memory issues, race conditions etc..

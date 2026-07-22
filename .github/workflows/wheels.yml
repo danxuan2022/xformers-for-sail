@@ -91,4 +91,3 @@ jobs:
       aws_s3_cp_extra_args: --acl public-read
       filter: "*torch2.3.1+cu121*"
       execute: ${{ github.repository == 'facebookresearch/xformers' && github.ref_type == 'tag' }}
-

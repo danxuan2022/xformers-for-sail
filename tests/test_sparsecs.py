@@ -4,11 +4,12 @@
 # LICENSE file in the root directory of this source tree.
 
 import pytest
-import torch
-
 from xformers.components.attention import maybe_sparsify
 from xformers.components.attention._sputnik_sparse import _dense_to_sparse
-from xformers.components.attention.core import SparseCS, _create_random_sparsity
+from xformers.components.attention.core import _create_random_sparsity, SparseCS
+
+import torch
+
 
 B = 2
 M = 16  # not a nice round number, on purpose

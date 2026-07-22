@@ -4,7 +4,7 @@
 # LICENSE file in the root directory of this source tree.
 
 
-from typing import Optional, Tuple
+from typing import Optional
 
 import torch
 import torch.distributed
@@ -26,7 +26,7 @@ def all_reduce(
 
 def gather_along_first_dim_async(
     input_: torch.Tensor, *, process_group: torch.distributed.ProcessGroup
-) -> Tuple[torch.Tensor, Optional[torch.distributed.Work]]:
+) -> tuple[torch.Tensor, Optional[torch.distributed.Work]]:
     assert input_.is_contiguous()
     mp_size = process_group.size()
     if mp_size == 1:
@@ -45,7 +45,7 @@ def gather_along_first_dim_async(
 
 def reduce_scatter_along_first_dim_async(
     input_: torch.Tensor, *, process_group: torch.distributed.ProcessGroup
-) -> Tuple[torch.Tensor, Optional[torch.distributed.Work]]:
+) -> tuple[torch.Tensor, Optional[torch.distributed.Work]]:
     assert input_.is_contiguous()
     mp_size = process_group.size()
     if mp_size == 1:
@@ -95,7 +95,7 @@ class _CopyToModelParallelRegion(torch.autograd.Function):
     @staticmethod
     def backward(  # type: ignore[override]
         ctx, grad_output: torch.Tensor
-    ) -> Tuple[torch.Tensor, None]:
+    ) -> tuple[torch.Tensor, None]:
         all_reduce(grad_output, process_group=ctx.process_group)
         return grad_output, None
 
@@ -118,7 +118,7 @@ class _ReduceFromModelParallelRegion(torch.autograd.Function):
     @staticmethod
     def backward(  # type: ignore[override]
         ctx, grad_output: torch.Tensor
-    ) -> Tuple[torch.Tensor, None]:
+    ) -> tuple[torch.Tensor, None]:
         return grad_output, None
 
 
@@ -139,7 +139,7 @@ class _GatherFromSequenceParallelRegion(torch.autograd.Function):
     @staticmethod
     def backward(  # type: ignore[override]
         ctx, grad_output: torch.Tensor
-    ) -> Tuple[torch.Tensor, None]:
+    ) -> tuple[torch.Tensor, None]:
         return (
             reduce_scatter_along_first_dim(
                 grad_output, process_group=ctx.process_group
@@ -165,7 +165,7 @@ class _ScatterToSequenceParallelRegion(torch.autograd.Function):
     @staticmethod
     def backward(  # type: ignore[override]
         ctx, grad_output: torch.Tensor
-    ) -> Tuple[torch.Tensor, None]:
+    ) -> tuple[torch.Tensor, None]:
         return (
             gather_along_first_dim(grad_output, process_group=ctx.process_group),
             None,

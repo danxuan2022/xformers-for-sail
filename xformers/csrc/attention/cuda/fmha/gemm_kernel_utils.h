@@ -7,7 +7,7 @@
  */
 #pragma once
 
-#include "cutlass/arch/mma.h"
+#include "cutlass2/arch/mma.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 // Some helper functions

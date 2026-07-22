@@ -10,14 +10,17 @@ import torch
 from xformers import _is_triton_available
 from xformers.ops import masked_matmul
 
+
 logger = logging.getLogger("xformers")
 
 
 try:
     if not _is_triton_available():
         raise ImportError("triton is not available")
-    from triton.ops.blocksparse import matmul as blocksparse_matmul
-    from triton.ops.blocksparse import softmax as blocksparse_softmax
+    from triton.ops.blocksparse import (
+        matmul as blocksparse_matmul,
+        softmax as blocksparse_softmax,
+    )
 except ImportError as e:
     logger.warning(
         "Triton is not available, some optimizations will not be enabled.\n"
@@ -114,9 +117,9 @@ class BlockSparseTensor(torch.Tensor):
 
     def __init__(self, values, layout):
         assert values.shape[-2] == values.shape[-1]
-        assert (
-            values.device == layout.device
-        ), "Both values and layout need to reside on the same device"
+        assert values.device == layout.device, (
+            "Both values and layout need to reside on the same device"
+        )
         block_size = values.shape[-1]
         # TODO: make this check conditioned on the use of Triton
         assert block_size >= 16, "Minimum block size is 16, for now at least"

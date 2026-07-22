@@ -3,7 +3,7 @@
 # This source code is licensed under the BSD license found in the
 # LICENSE file in the root directory of this source tree.
 
-from typing import Callable, List
+from typing import Callable
 
 import torch
 import torch.distributed
@@ -46,7 +46,7 @@ class ColumnParallelLinear(torch.nn.Module):
     def __init__(
         self,
         in_features: int,
-        out_features: List[int],
+        out_features: list[int],
         *,
         process_group: torch.distributed.ProcessGroup,
         bias: bool = True,
@@ -91,7 +91,7 @@ class ColumnParallelLinear(torch.nn.Module):
         for w in self.weights:
             _init_2d_weight(w, init_method, process_group, partition_dim=0)
 
-    def forward(self, input_: torch.Tensor) -> List[torch.Tensor]:
+    def forward(self, input_: torch.Tensor) -> list[torch.Tensor]:
         if self.sequence_parallel:
             outputs = sequence_parallel_leading_matmul(
                 input_,

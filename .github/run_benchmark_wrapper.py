@@ -9,9 +9,10 @@ import shlex
 import subprocess
 import sys
 
+import xformers
+
 import torch
 
-import xformers
 
 # Build failed - return early
 if not xformers._has_cpp_library:

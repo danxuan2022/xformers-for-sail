@@ -5,13 +5,14 @@
 
 
 import math
-from enum import Enum, auto
+from enum import auto, Enum
 from typing import Optional
 
 import torch
 from torch.autograd.profiler import record_function
 
 from .base import FeatureMap
+
 
 """
 A set of feature maps which approximate the softmax kernel, as per the Performers_ paper.
@@ -188,9 +189,9 @@ class SMHyperbolic(SoftMaxPositiveEstimators):
             dim_features, iter_before_redraw, normalize_inputs, epsilon, softmax_temp
         )
 
-        assert (
-            dim_features % 2 == 0
-        ), "The feature dimension needs to be even with this kernel"
+        assert dim_features % 2 == 0, (
+            "The feature dimension needs to be even with this kernel"
+        )
         self.dim_feature_map = self.dim_features // 2
 
     @torch.no_grad()
@@ -248,9 +249,9 @@ class SMReg(SoftMaxPositiveEstimators):
             dim_features, iter_before_redraw, normalize_inputs, epsilon, softmax_temp
         )
 
-        assert (
-            dim_features % 2 == 0
-        ), "The feature dimension needs to be even with this kernel"
+        assert dim_features % 2 == 0, (
+            "The feature dimension needs to be even with this kernel"
+        )
         self.dim_feature_map = self.dim_features // 2
 
     @torch.no_grad()

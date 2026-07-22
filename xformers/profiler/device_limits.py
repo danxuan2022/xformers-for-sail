@@ -5,7 +5,7 @@
 
 import math
 from dataclasses import dataclass, field
-from typing import Mapping, Optional, Tuple
+from typing import Mapping, Optional
 
 import torch
 
@@ -14,7 +14,7 @@ import torch
 class DeviceLimit:
     name: str = "default"  # pattern to match from `torch.cuda.get_device_name()`
     source: str = ""
-    sm: Tuple[int, int] = (0, 0)
+    sm: tuple[int, int] = (0, 0)
     # bytes/s
     gmem_bandwidth: float = math.inf
     # dtype -> TFlop/s
@@ -22,7 +22,7 @@ class DeviceLimit:
 
 
 # For f32, we assume we can use tf32
-DEVICE_LIMITS: Tuple[DeviceLimit, ...] = (
+DEVICE_LIMITS: tuple[DeviceLimit, ...] = (
     DeviceLimit(
         "H100",
         "https://resources.nvidia.com/en-us-tensor-core/nvidia-tensor-core-gpu-datasheet",  # noqa: E501

@@ -9,13 +9,13 @@ import math
 from collections import defaultdict
 from dataclasses import dataclass, field
 from functools import partial
-from typing import Any, Dict, List, Set, Tuple
+from typing import Any
 
 import torch.cuda.memory
 import torch.cuda.nvtx
 import torch.profiler
 import torch.utils.hooks
-from torch.utils._python_dispatch import TorchDispatchMode, _pop_mode_temporarily
+from torch.utils._python_dispatch import _pop_mode_temporarily, TorchDispatchMode
 from torch.utils._pytree import tree_map
 
 from ..ops.common import FUNC_TO_XFORMERS_OPERATOR
@@ -73,29 +73,29 @@ def prod(x):
 
 
 class GemmOpComputeFlops:
-    def _get_mnk(self, inputs: List[Any]) -> Tuple[int, int, int]:
+    def _get_mnk(self, inputs: list[Any]) -> tuple[int, int, int]:
         return (prod(inputs[0].shape[:-1]), inputs[1].shape[1], inputs[0].shape[-1])
 
-    def __call__(self, inputs: List[Any], outputs: List[Any]) -> float:
+    def __call__(self, inputs: list[Any], outputs: list[Any]) -> float:
         return 2 * prod(self._get_mnk(inputs))
 
-    def op_suffix(self, inputs: List[Any]) -> str:
+    def op_suffix(self, inputs: list[Any]) -> str:
         m, n, k = self._get_mnk(inputs)
         return f"_{m}x{n}x{k}"
 
 
 class GemmOpComputeFlopsLinear(GemmOpComputeFlops):
-    def _get_mnk(self, inputs: List[Any]) -> Tuple[int, int, int]:
+    def _get_mnk(self, inputs: list[Any]) -> tuple[int, int, int]:
         return (prod(inputs[0].shape[:-1]), inputs[1].shape[0], inputs[0].shape[-1])
 
 
 class GemmOpComputeFlopsMv(GemmOpComputeFlops):
-    def _get_mnk(self, inputs: List[Any]) -> Tuple[int, int, int]:
+    def _get_mnk(self, inputs: list[Any]) -> tuple[int, int, int]:
         return (prod(inputs[0].shape[:-1]), 1, inputs[0].shape[-1])
 
 
 class GemmOpComputeFlopsBmm(GemmOpComputeFlops):
-    def _get_mnk(self, inputs: List[Any]) -> Tuple[int, int, int]:
+    def _get_mnk(self, inputs: list[Any]) -> tuple[int, int, int]:
         a, b = inputs[0], inputs[1]
         assert a.ndim == 3
         assert b.ndim == 3
@@ -104,19 +104,19 @@ class GemmOpComputeFlopsBmm(GemmOpComputeFlops):
 
 
 class GemmOpComputeFlopsAddmm(GemmOpComputeFlops):
-    def _get_mnk(self, inputs: List[Any]) -> Tuple[int, int, int]:
+    def _get_mnk(self, inputs: list[Any]) -> tuple[int, int, int]:
         return super()._get_mnk(inputs[1:])
 
 
 class GemmOpComputeFlopsAddbmm(GemmOpComputeFlopsBmm):
-    def _get_mnk(self, inputs: List[Any]) -> Tuple[int, int, int]:
+    def _get_mnk(self, inputs: list[Any]) -> tuple[int, int, int]:
         return super()._get_mnk(inputs[1:])
 
 
 def conv_flop_count(
-    x_shape: List[int],
-    w_shape: List[int],
-    out_shape: List[int],
+    x_shape: list[int],
+    w_shape: list[int],
+    out_shape: list[int],
     transposed: bool = False,
 ) -> float:
     """
@@ -138,7 +138,7 @@ def conv_flop_count(
     return flop
 
 
-def conv_flop(inputs: List[Any], outputs: List[Any]):
+def conv_flop(inputs: list[Any], outputs: list[Any]):
     """
     Count flops for convolution.
     """
@@ -153,7 +153,7 @@ def transpose_shape(shape):
     return [shape[1], shape[0]] + list(shape[2:])
 
 
-def conv_backward_flop(inputs: List[Any], outputs: List[Any]):
+def conv_backward_flop(inputs: list[Any], outputs: list[Any]):
     grad_out_shape, x_shape, w_shape = [get_shape(i) for i in inputs[:3]]
     output_mask = inputs[-1]
     fwd_transposed = inputs[7]
@@ -181,7 +181,7 @@ def tensor_storage_size_in_mem(x: torch.Tensor):
     return total
 
 
-def get_size(inputs: List[Any]):
+def get_size(inputs: list[Any]):
     total_bytes = 0
 
     def process(x) -> None:
@@ -193,25 +193,25 @@ def get_size(inputs: List[Any]):
     return total_bytes
 
 
-def operation_memory_rw_bytes(inputs: List[Any], outputs: List[Any]):
+def operation_memory_rw_bytes(inputs: list[Any], outputs: list[Any]):
     size_input, size_output = get_size(inputs), get_size(outputs)
     return size_input + size_output
 
 
-def output_read_from_input(inputs: List[Any], outputs: List[Any]):
+def output_read_from_input(inputs: list[Any], outputs: list[Any]):
     size_input, size_output = get_size(inputs), get_size(outputs)
     return size_output + min(size_input, size_output)
 
 
-def output_total_size(inputs: List[Any], outputs: List[Any]):
+def output_total_size(inputs: list[Any], outputs: list[Any]):
     return get_size(outputs)
 
 
-def input_total_size(inputs: List[Any], outputs: List[Any]):
+def input_total_size(inputs: list[Any], outputs: list[Any]):
     return get_size(inputs)
 
 
-def guess_flops_unknown_op(inputs: List[Any], outputs: List[Any]):
+def guess_flops_unknown_op(inputs: list[Any], outputs: list[Any]):
     # Approximation that isn't too bad
     total_elements = 0
 
@@ -225,11 +225,11 @@ def guess_flops_unknown_op(inputs: List[Any], outputs: List[Any]):
     return total_elements / 2
 
 
-def no_flop(inputs: List[Any], outputs: List[Any]):
+def no_flop(inputs: list[Any], outputs: list[Any]):
     return 0
 
 
-def no_io(inputs: List[Any], outputs: List[Any]):
+def no_io(inputs: list[Any], outputs: list[Any]):
     return 0
 
 
@@ -280,8 +280,8 @@ flop_mapping = {
     aten._convolution: conv_flop,
     aten.convolution_backward: conv_backward_flop,
     # Operations with 0 flop
-    **{op: no_flop for op in NO_FLOPS_OPS},
-    **{op: no_flop for op in NO_FLOPS_NO_IO_OPS},
+    **dict.fromkeys(NO_FLOPS_OPS, no_flop),
+    **dict.fromkeys(NO_FLOPS_NO_IO_OPS, no_flop),
 }
 io_mapping = {
     aten.clone: output_read_from_input,
@@ -290,7 +290,7 @@ io_mapping = {
     aten.ones_like: output_total_size,
     aten.zeros_like: output_total_size,
     aten.zero_: input_total_size,
-    **{op: no_io for op in NO_FLOPS_NO_IO_OPS}
+    **dict.fromkeys(NO_FLOPS_NO_IO_OPS, no_io),
     # TODO: Check how this is implemented in PT
     # aten.slice_backward: no_flop,
     # aten.select_backward: no_flop,
@@ -305,7 +305,7 @@ class _OpInfo:
     is_exact_flop: bool = True
     op_name: str = ""
     op_suffix: str = ""
-    stacktrace: Tuple[str, ...] = field(default_factory=tuple)
+    stacktrace: tuple[str, ...] = field(default_factory=tuple)
     ev_start: torch.cuda.Event = field(
         default_factory=lambda: torch.cuda.Event(enable_timing=True)
     )
@@ -345,7 +345,7 @@ class _OpInfoAggregated:
     total_time_membound_ms: float = 0.0
     total_time_computebound_ms: float = 0.0
     num: int = 0
-    stacktraces: List[Tuple[str, ...]] = field(default_factory=list)
+    stacktraces: list[tuple[str, ...]] = field(default_factory=list)
 
     def add(self, op: _OpInfo) -> None:
         self.total_flop_count += op.flop_count
@@ -357,7 +357,7 @@ class _OpInfoAggregated:
         self.is_exact_flop = op.is_exact_flop
         self.stacktraces.append(op.stacktrace)
 
-    def as_dict(self, **kwargs) -> Dict[str, Any]:
+    def as_dict(self, **kwargs) -> dict[str, Any]:
         mem_bound = min(1, self.total_time_membound_ms / self.total_time_ms)
         tflops = self.total_flop_count / (self.total_time_ms / 1000) / (1000**4)
         compute_bound = min(1, self.total_time_computebound_ms / self.total_time_ms)
@@ -381,14 +381,14 @@ class DetectSlowOpsProfiler(DispatcherWithoutBrokenFuncs):
 
     def __init__(self, main_profiler: _Profiler) -> None:
         self.main_profiler = main_profiler
-        self.trace: List[_OpInfo] = []
+        self.trace: list[_OpInfo] = []
         self.temp_disabled = False
 
     def _hardware_tflops_membw_limit(
-        self, args: Tuple[Any, ...], outputs: Tuple[Any, ...]
-    ) -> Tuple[float, float]:
+        self, args: tuple[Any, ...], outputs: tuple[Any, ...]
+    ) -> tuple[float, float]:
         device = None
-        dtypes: List[torch.dtype] = []
+        dtypes: list[torch.dtype] = []
         for a in itertools.chain(outputs, args):
             if isinstance(a, torch.Tensor):
                 if device is None:
@@ -464,11 +464,11 @@ class DetectSlowOpsProfiler(DispatcherWithoutBrokenFuncs):
 
     def save_json(self) -> None:
         # Aggregate data at the module + op level
-        all_paths: Set[Tuple[str, ...]] = set()
-        per_module_data: Dict[Tuple[str, ...], _OpInfoAggregated] = defaultdict(
+        all_paths: set[tuple[str, ...]] = set()
+        per_module_data: dict[tuple[str, ...], _OpInfoAggregated] = defaultdict(
             _OpInfoAggregated
         )
-        per_op_data: Dict[str, _OpInfoAggregated] = defaultdict(_OpInfoAggregated)
+        per_op_data: dict[str, _OpInfoAggregated] = defaultdict(_OpInfoAggregated)
         for op in self.trace:
             all_paths.add(op.stacktrace)
         for op in self.trace:
@@ -487,7 +487,7 @@ class DetectSlowOpsProfiler(DispatcherWithoutBrokenFuncs):
             )
         for op_name, agg_info in per_op_data.items():
             # Find the most common path
-            paths_count: Dict[Tuple[str, ...], int] = defaultdict(int)
+            paths_count: dict[tuple[str, ...], int] = defaultdict(int)
             agg_info.stacktraces.sort()  # In case of a draw, let's always return the same
             for p in agg_info.stacktraces:
                 paths_count[p] += 1

@@ -3,10 +3,11 @@
 # This source code is licensed under the BSD license found in the
 # LICENSE file in the root directory of this source tree.
 
-from typing import Optional, Tuple, TypeVar, overload
+from typing import Optional, overload, TypeVar
 
 from pyre_extensions import TypeVarTuple, Unpack
-from torch import Tensor, complex64
+
+from torch import complex64, Tensor
 
 DType = TypeVar("DType")
 
@@ -24,8 +25,8 @@ def fft(
 @overload
 def fft2(
     input: Tensor[DType, Unpack[Ts]],
-    s: Optional[Tuple[int, ...]] = ...,
-    dim: Tuple[int, ...] = ...,
+    s: Optional[tuple[int, ...]] = ...,
+    dim: tuple[int, ...] = ...,
     norm: Optional[str] = ...,
     *,
     out: Optional[Tensor] = ...,

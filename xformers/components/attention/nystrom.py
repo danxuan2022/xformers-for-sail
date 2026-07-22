@@ -22,6 +22,7 @@ from xformers.components.attention.utils import (
     reshape_key_padding_mask,
 )
 
+
 logger = logging.getLogger("xformers")
 
 
@@ -290,6 +291,4 @@ class NystromAttention(Attention):
         return torch.triu(
             torch.ones(dim_2, dim_3, dtype=dtype, device=device) * float("-inf"),
             diagonal=1,
-        ).expand(
-            dim_1, -1, -1
-        )  # micro optim, save memory on the batch dimension
+        ).expand(dim_1, -1, -1)  # micro optim, save memory on the batch dimension

@@ -8,8 +8,7 @@ import gc
 import multiprocessing
 import os
 import signal
-from tempfile import NamedTemporaryFile, _TemporaryFileWrapper
-from typing import Dict, List, Tuple
+from tempfile import _TemporaryFileWrapper, NamedTemporaryFile
 
 import torch
 
@@ -17,7 +16,7 @@ import torch
 class SafeMpContext(multiprocessing.context.BaseContext):
     def __init__(self) -> None:
         self.mp_context = multiprocessing.get_context("spawn")
-        self.processes: List[multiprocessing.context.SpawnProcess] = []
+        self.processes: list[multiprocessing.context.SpawnProcess] = []
 
     def Process(self, *args, **kwargs) -> multiprocessing.context.SpawnProcess:
         p = self.mp_context.Process(*args, **kwargs)
@@ -88,7 +87,7 @@ def _launch_subprocesses_fn_wrapper(
     init_method: str,
     rank: int,
     world_size: int,
-    parent_env_vars: Dict[str, str],
+    parent_env_vars: dict[str, str],
     user_fn,
     args,
     kwargs,
@@ -113,14 +112,14 @@ def _launch_subprocesses_fn_wrapper(
 
 
 # Global dictionary to keep track of executors and temporary files
-EXECUTORS_AND_FILES: Dict[
-    int, Tuple[_TemporaryFileWrapper, concurrent.futures.ProcessPoolExecutor]
+EXECUTORS_AND_FILES: dict[
+    int, tuple[_TemporaryFileWrapper, concurrent.futures.ProcessPoolExecutor]
 ] = {}
 
 
 def get_global_pool_allocator(
     world_size: int,
-) -> Tuple[_TemporaryFileWrapper, concurrent.futures.ProcessPoolExecutor]:
+) -> tuple[_TemporaryFileWrapper, concurrent.futures.ProcessPoolExecutor]:
     global EXECUTORS_AND_FILES
 
     if world_size not in EXECUTORS_AND_FILES:

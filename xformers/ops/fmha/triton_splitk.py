@@ -6,18 +6,14 @@
 import functools
 import sys
 from typing import (
-    TYPE_CHECKING,
     Any,
     Callable,
-    Dict,
+    cast,
     Iterable,
-    List,
     Optional,
     Sequence,
-    Tuple,
-    Type,
+    TYPE_CHECKING,
     Union,
-    cast,
 )
 
 import torch
@@ -33,7 +29,7 @@ from .attn_bias import (
     PagedBlockDiagonalGappyKeysMask,
     PagedBlockDiagonalPaddedKeysMask,
 )
-from .common import AttentionFwOpBase, Context, Inputs, check_lastdim_alignment_stride1
+from .common import AttentionFwOpBase, check_lastdim_alignment_stride1, Context, Inputs
 
 
 def _strides(x: Optional[torch.Tensor], *stride_names: str):
@@ -90,7 +86,7 @@ if TYPE_CHECKING or _is_triton_available():
     import triton
     import triton.language as tl
 
-    from xformers.triton.vararg_kernel import VAR_ARGS_ARRAY, unroll_varargs
+    from xformers.triton.vararg_kernel import unroll_varargs, VAR_ARGS_ARRAY
 
     @triton.jit
     def _fwd_kernel_splitK(
@@ -345,7 +341,7 @@ if TYPE_CHECKING or _is_triton_available():
         # Before compilation, this kernel will be processed by xformers.triton.vararg_kernel.unroll_varargs.
         # That turns tensors annotated as the one below into lists of tensors of length N_GROUPS.
         # This is a solution for Triton native lack of support for lists of tensors.
-        acc: "VAR_ARGS_ARRAY"  # noqa: F821
+        acc: VAR_ARGS_ARRAY  # noqa: F821
 
         for i in range(len(acc)):  # noqa: F821
             acc[i] = tl.zeros(  # noqa: F821
@@ -356,7 +352,7 @@ if TYPE_CHECKING or _is_triton_available():
         # don't work as expected with `exp` in the loop
         qk_scale = sm_scale * 1.44269504
         # load q: it will stay in SRAM throughout
-        q: "VAR_ARGS_ARRAY"  # noqa: F821
+        q: VAR_ARGS_ARRAY  # noqa: F821
         for i in range(len(acc)):  # noqa: F821
             q[i] = tl.load(  # noqa: F821
                 tl.advance(Q_block_ptr, (0, i * D_PER_GROUP)), boundary_check=(0,)
@@ -432,8 +428,8 @@ if TYPE_CHECKING or _is_triton_available():
                     V_scale_shift_block_ptr = None
                 logical_block_idx += 1
 
-            k: "VAR_ARGS_ARRAY"  # noqa: F821
-            v: "VAR_ARGS_ARRAY"  # noqa: F821
+            k: VAR_ARGS_ARRAY  # noqa: F821
+            v: VAR_ARGS_ARRAY  # noqa: F821
             for i in range(len(acc)):  # noqa: F821
                 k[i], v[i] = load_dequantize_k_v_group(  # noqa: F821
                     K_block_ptr,
@@ -520,7 +516,9 @@ if TYPE_CHECKING or _is_triton_available():
             # If for the current batch element there are no tokens in the current split-k chunk (because
             # seqlen is too short), l_i will be 0, so we need to make sure attention is filled with zeros and not NaNs.
             attn_out = tl.where(
-                l_i[:, None] == 0, 0.0, acc[i] / l_i[:, None]  # noqa: F821
+                l_i[:, None] == 0,
+                0.0,
+                acc[i] / l_i[:, None],  # noqa: F821
             )
             tl.store(
                 tl.advance(O_block_ptr, (0, i * D_PER_GROUP)),
@@ -607,7 +605,7 @@ if TYPE_CHECKING or _is_triton_available():
 
     # This object contains forward kernels wrapped into autotuner for different number
     # of quantization groups.
-    _fwd_kernel_splitK_autotune: Dict[int, triton.runtime.Autotuner] = {}
+    _fwd_kernel_splitK_autotune: dict[int, triton.runtime.Autotuner] = {}
     # The loop below:
     # - transforms the jitted kernel with unroll_varargs producing a new kernel of each value of num_groups
     # - wraps the kernel into triton.heuristics
@@ -619,7 +617,7 @@ if TYPE_CHECKING or _is_triton_available():
                 _get_splitk_kernel(num_groups)
             )
 
-        def get_autotuner_cache(num_groups: int) -> Dict[Tuple[int], triton.Config]:
+        def get_autotuner_cache(num_groups: int) -> dict[tuple[int], triton.Config]:
             """Returns a triton.runtime.autotuner.AutoTuner.cache object, which
             represents mappings from kernel autotune keys (tuples describing kernel inputs)
             to triton.Config
@@ -627,7 +625,7 @@ if TYPE_CHECKING or _is_triton_available():
             return _fwd_kernel_splitK_autotune[num_groups].cache
 
         def set_autotuner_cache(
-            cache: Dict[Tuple[int], triton.Config], num_groups: int
+            cache: dict[tuple[int], triton.Config], num_groups: int
         ) -> None:
             _fwd_kernel_splitK_autotune[num_groups].cache = cache
 
@@ -872,7 +870,7 @@ if TYPE_CHECKING or _is_triton_available():
         off_h = (off_zhg // G) % H
         off_g = off_zhg % G
 
-        out_splitk_offset: "VAR_ARGS_ARRAY"  # noqa: F821
+        out_splitk_offset: VAR_ARGS_ARRAY  # noqa: F821
         for i in range(len(Out_splitK)):
             out_splitk_offset[i] = (  # noqa: F821
                 stride_osk_z[i] * off_z  # type: ignore # noqa: F821
@@ -881,7 +879,7 @@ if TYPE_CHECKING or _is_triton_available():
                 + stride_osk_m[i] * off_m
                 + tl.arange(0, BLOCK_SIZE)
             )
-        lse_splitk_offset: "VAR_ARGS_ARRAY"  # noqa: F821
+        lse_splitk_offset: VAR_ARGS_ARRAY  # noqa: F821
         for i in range(len(Out_splitK)):
             lse_splitk_offset[i] = (  # noqa: F821
                 stride_lsek_z[i] * off_z  # type: ignore # noqa: F821
@@ -900,8 +898,12 @@ if TYPE_CHECKING or _is_triton_available():
         numerator_normalized = tl.zeros([BLOCK_SIZE], dtype=tl.float32)
 
         for split_k_idx in range(len(Out_splitK)):  # type: ignore # noqa: F821
-            out_splitk = tl.load(Out_splitK[split_k_idx] + out_splitk_offset[split_k_idx])  # type: ignore # noqa: F821
-            lse_splitk = tl.load(LSE_splitK[split_k_idx] + lse_splitk_offset[split_k_idx])  # type: ignore # noqa: F821
+            out_splitk = tl.load(
+                Out_splitK[split_k_idx] + out_splitk_offset[split_k_idx]
+            )  # type: ignore # noqa: F821
+            lse_splitk = tl.load(
+                LSE_splitK[split_k_idx] + lse_splitk_offset[split_k_idx]
+            )  # type: ignore # noqa: F821
             # Compute denominator
             sumexp_normalized_splitk = tl.math.exp2(
                 (lse_splitk - lse_max).to(tl.float32) * 1.44269504
@@ -998,7 +1000,7 @@ if TYPE_CHECKING or _is_triton_available():
 
         # Compute offsets inside each attention/LSE chunk.
         # Note that each chunk can have different strides, so offsets can also be different.
-        out_splitk_offset: "VAR_ARGS_ARRAY"  # noqa: F821
+        out_splitk_offset: VAR_ARGS_ARRAY  # noqa: F821
         for i in range(len(Out_splitK)):
             out_splitk_offset[i] = (  # type: ignore # noqa: F821
                 stride_osk_z[i] * off_z
@@ -1007,7 +1009,7 @@ if TYPE_CHECKING or _is_triton_available():
                 + stride_osk_m[i] * off_m
                 + tl.arange(0, BLOCK_SIZE)
             )
-        lse_splitk_offset: "VAR_ARGS_ARRAY"  # noqa: F821
+        lse_splitk_offset: VAR_ARGS_ARRAY  # noqa: F821
         for i in range(len(Out_splitK)):
             lse_splitk_offset[i] = (  # type: ignore # noqa: F821
                 stride_lsek_z[i] * off_z
@@ -1058,8 +1060,12 @@ if TYPE_CHECKING or _is_triton_available():
 
         for split_k_idx in range(len(Out_splitK)):  # type: ignore # noqa: F821
             # Load attention and LSE of chunks
-            out_splitk = tl.load(Out_splitK[split_k_idx] + out_splitk_offset[split_k_idx])  # type: ignore # noqa: F821
-            lse_splitk = tl.load(LSE_splitK[split_k_idx] + lse_splitk_offset[split_k_idx])  # type: ignore # noqa: F821
+            out_splitk = tl.load(
+                Out_splitK[split_k_idx] + out_splitk_offset[split_k_idx]
+            )  # type: ignore # noqa: F821
+            lse_splitk = tl.load(
+                LSE_splitK[split_k_idx] + lse_splitk_offset[split_k_idx]
+            )  # type: ignore # noqa: F821
 
             # Pointers to save gradients of attention and LSE of chunks
             dout_splitk_ptr = Dout_splitK[split_k_idx] + out_splitk_offset[split_k_idx]  # type: ignore # noqa: F821
@@ -1200,7 +1206,7 @@ class FwOp(AttentionFwOpBase):
     @classmethod
     def shape_not_supported_reasons(
         cls, Mq: int, Mkv: int, K: int, Kv: int
-    ) -> List[str]:
+    ) -> list[str]:
         reasons = super().shape_not_supported_reasons(Mq, Mkv, K, Kv)
         if K not in {16, 32, 64, 128, 256, 512}:
             reasons.append(f"Embed dim {K} not supported")
@@ -1211,7 +1217,7 @@ class FwOp(AttentionFwOpBase):
         return reasons
 
     @classmethod
-    def not_supported_reasons(cls, d: Inputs) -> List[str]:
+    def not_supported_reasons(cls, d: Inputs) -> list[str]:
         reasons = super(FwOp, cls).not_supported_reasons(d)
         if (sys.version_info.major, sys.version_info.minor) < (3, 9):
             reasons.append("triton_splitk requires python 3.9 or above!")
@@ -1315,7 +1321,7 @@ class FwOp(AttentionFwOpBase):
     @classmethod
     def apply(
         cls, inp: Inputs, needs_gradient: bool
-    ) -> Tuple[torch.Tensor, Optional[Context]]:
+    ) -> tuple[torch.Tensor, Optional[Context]]:
         output_dtype = inp.get_output_dtype()
         if not isinstance(inp.attn_bias, torch.Tensor):
             attn_bias_tensor = None
@@ -1661,7 +1667,7 @@ class FwOp(AttentionFwOpBase):
         num_warps: Optional[int] = None,
         num_stages: Optional[int] = None,
         split_k_early_exit: Optional[bool] = None,
-    ) -> Type[AttentionFwOpBase]:
+    ) -> type[AttentionFwOpBase]:
         kwargs = {
             "NAME": f"triton_splitK{splitk}",
             "SPLIT_K": splitk,
@@ -1699,15 +1705,17 @@ def merge_attentions(
         and H == H1 == H2
         and M == M1 == M2
         and Kq == Kq1
-    ), f"Incompatible shapes: {attn_out.shape=}, {attn_split.shape=}, {lse_split.shape=}"
-    assert (
-        split_k == split_k1
-    ), f"Incompatible shapes: {attn_split.shape=}, {lse_split.shape=}"
+    ), (
+        f"Incompatible shapes: {attn_out.shape=}, {attn_split.shape=}, {lse_split.shape=}"
+    )
+    assert split_k == split_k1, (
+        f"Incompatible shapes: {attn_split.shape=}, {lse_split.shape=}"
+    )
     if lse_out is not None:
         B3, G3, H3, M3 = lse_out.shape
-        assert (
-            B == B3 and G == G3 and H == H3 and M == M3
-        ), f"Incompatible shapes: {attn_out.shape=}, {lse_out.shape=}"
+        assert B == B3 and G == G3 and H == H3 and M == M3, (
+            f"Incompatible shapes: {attn_out.shape=}, {lse_out.shape=}"
+        )
 
     num_warps = 4 if B * G * H < 32 or torch.version.hip else 2
     splitK_pow2 = triton.next_power_of_2(split_k)
@@ -1753,14 +1761,13 @@ def merge_attentions_varargs(
 
 
 def merge_attentions_varargs_backward(
-    attn_split: List[torch.Tensor],
-    lse_split: List[torch.Tensor],
+    attn_split: list[torch.Tensor],
+    lse_split: list[torch.Tensor],
     attn_out: torch.Tensor,
     lse_out: torch.Tensor,
     grad_attn: torch.Tensor,
     grad_lse: torch.Tensor,
-) -> Tuple[List[torch.Tensor], List[torch.Tensor]]:
-
+) -> tuple[list[torch.Tensor], list[torch.Tensor]]:
     dattn_splitk = [torch.empty_like(x) for x in attn_split]
     dlse_splitk = [torch.empty_like(x) for x in lse_split]
 
@@ -1794,8 +1801,7 @@ def _prepare_reduce_kernel_params(
     lse_split: Sequence[torch.Tensor],
     grad_attn: Optional[torch.Tensor] = None,
     grad_lse: Optional[torch.Tensor] = None,
-) -> Tuple[Dict[str, int], Tuple[int, int, int]]:
-
+) -> tuple[dict[str, int], tuple[int, int, int]]:
     B, M, G, H, Kq = attn_out.shape
     B1, G1, H1, M1, Kq1 = attn_split[0].shape
     B2, G2, H2, M2 = lse_split[0].shape
@@ -1806,12 +1812,14 @@ def _prepare_reduce_kernel_params(
         and H == H1 == H2
         and M == M1 == M2
         and Kq == Kq1
-    ), f"Incompatible shapes: {attn_out.shape=}, {attn_split[0].shape=}, {lse_split[0].shape=}"
+    ), (
+        f"Incompatible shapes: {attn_out.shape=}, {attn_split[0].shape=}, {lse_split[0].shape=}"
+    )
     if lse_out is not None:
         B3, G3, H3, M3 = lse_out.shape
-        assert (
-            B == B3 and G == G3 and H == H3 and M == M3
-        ), f"Incompatible shapes: {attn_out.shape=}, {lse_out.shape=}"
+        assert B == B3 and G == G3 and H == H3 and M == M3, (
+            f"Incompatible shapes: {attn_out.shape=}, {lse_out.shape=}"
+        )
 
     attn_split_strides = {}
     lse_split_strides = {}

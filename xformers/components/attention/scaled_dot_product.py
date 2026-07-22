@@ -18,6 +18,7 @@ from xformers.components.attention import (
 )
 from xformers.components.attention.core import scaled_dot_product_attention
 
+
 logger = logging.getLogger("xformers")
 
 

@@ -9,16 +9,17 @@ import os
 import sys
 from collections import namedtuple
 from dataclasses import fields
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Optional
 
 import torch
+
 
 Item = namedtuple("Item", ["constructor", "config"])
 
 
 # credit: snippet used in ClassyVision (and probably other places)
-def import_all_modules(root: str, base_module: str) -> List[str]:
-    modules: List[str] = []
+def import_all_modules(root: str, base_module: str) -> list[str]:
+    modules: list[str] = []
     for file in os.listdir(root):
         if file.endswith((".py", ".pyc")) and not file.startswith("_"):
             module = file[: file.find(".py")]
@@ -42,18 +43,14 @@ def get_registry_decorator(
 
         def register_cls(cls):
             if name in class_registry:
-                raise ValueError("Cannot register duplicate item ({})".format(name))
+                raise ValueError(f"Cannot register duplicate item ({name})")
             if not issubclass(cls, reference_class):
                 raise ValueError(
-                    "Item ({}: {}) must extend the base class: {}".format(
-                        name, cls.__name__, reference_class.__name__
-                    )
+                    f"Item ({name}: {cls.__name__}) must extend the base class: {reference_class.__name__}"
                 )
             if cls.__name__ in name_registry:
                 raise ValueError(
-                    "Cannot register item with duplicate class name ({})".format(
-                        cls.__name__
-                    )
+                    f"Cannot register item with duplicate class name ({cls.__name__})"
                 )
 
             class_registry[name] = Item(constructor=cls, config=config)
@@ -65,7 +62,7 @@ def get_registry_decorator(
     return register_item
 
 
-def generate_matching_config(superset: Dict[str, Any], config_class: Any) -> Any:
+def generate_matching_config(superset: dict[str, Any], config_class: Any) -> Any:
     """Given a superset of the inputs and a reference config class,
     return exactly the needed config"""
 
@@ -83,7 +80,7 @@ def generate_matching_config(superset: Dict[str, Any], config_class: Any) -> Any
 
 # from https://github.com/openai/triton/blob/95d9b7f4ae21710dc899e1de6a579b2136ea4f3d/python/triton/testing.py#L19
 def do_bench_cudagraph(
-    fn: Callable, rep: int = 20, grad_to_none: Optional[List[torch.Tensor]] = None
+    fn: Callable, rep: int = 20, grad_to_none: Optional[list[torch.Tensor]] = None
 ) -> float:
     """
     Benchmark the runtime of the provided function.

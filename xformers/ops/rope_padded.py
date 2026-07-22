@@ -2,7 +2,7 @@
 #
 # This source code is licensed under the BSD license found in the
 # LICENSE file in the root directory of this source tree.
-from typing import Optional, Tuple
+from typing import Optional
 
 import torch
 
@@ -134,7 +134,7 @@ def rope_padded(
         if cache_v.shape != (1, cache_length, expected_cache_heads, dim):
             raise ValueError("unexpected cache_v shape")
         n_groups = 1
-        out_q_stride: Tuple[int, ...] = (0, n_q_heads * dim, dim, 1)
+        out_q_stride: tuple[int, ...] = (0, n_q_heads * dim, dim, 1)
 
     else:
         bsz, q_len, n_groups, n_q_heads, dim = xq.shape

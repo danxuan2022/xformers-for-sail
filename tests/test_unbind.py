@@ -6,10 +6,10 @@
 import random
 
 import pytest
-import torch
-
 import xformers.ops
 from xformers.ops.common import _get_storage_base
+
+import torch
 
 
 @pytest.mark.parametrize("contiguous", [True, False])
@@ -72,9 +72,9 @@ def test_unbind_get_stack_strides(dim: int, contiguous: bool):
         permute.insert(cat_dim, dim)
         x_permuted = x.permute(permute)
         assert not_stacked([tensors2[0], tensors[1]], cat_dim), "different storage"
-        assert not_stacked(
-            [tensors[0], tensors[1].clone()], cat_dim
-        ), "different storage"
+        assert not_stacked([tensors[0], tensors[1].clone()], cat_dim), (
+            "different storage"
+        )
 
         def test_slice(s):
             slices = [slice(None) for _ in range(ndim)]

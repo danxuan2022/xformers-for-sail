@@ -6,7 +6,7 @@
 
 from abc import ABCMeta, abstractmethod
 from dataclasses import asdict, dataclass
-from typing import Optional, Type, TypeVar
+from typing import Optional, TypeVar
 
 import torch
 import torch.nn as nn
@@ -61,7 +61,7 @@ class Attention(nn.Module, metaclass=ABCMeta):
         self.supports_key_padding_mask = False
 
     @classmethod
-    def from_config(cls: Type[Self], config: AttentionConfig) -> Self:
+    def from_config(cls: type[Self], config: AttentionConfig) -> Self:
         # Generate the class inputs from the config
         fields = asdict(config)
 

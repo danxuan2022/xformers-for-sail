@@ -9,7 +9,7 @@ import glob
 import warnings
 from functools import partial
 from pathlib import Path
-from typing import Any, Callable, Optional, Tuple, TypeVar, cast
+from typing import Any, Callable, cast, Optional, TypeVar
 
 import torch
 
@@ -53,7 +53,7 @@ def _get_cusparselt_lib() -> Optional[str]:
     return libs[0]
 
 
-def _get_cusparselt_torch_version() -> Tuple[int, int, int]:
+def _get_cusparselt_torch_version() -> tuple[int, int, int]:
     """
     Returns the version of the cusparselt.so library that ships with pytorch 2.2+
     """
@@ -136,9 +136,9 @@ def sparse24_pointwise_op(
                     "Sparse24Tensors with the same sparsity pattern"
                 )
         args_updated.append(tensor)
-    assert isinstance(
-        self, Sparse24TensorCutlass
-    ), "Only implemented for CUTLASS tensors"
+    assert isinstance(self, Sparse24TensorCutlass), (
+        "Only implemented for CUTLASS tensors"
+    )
     return Sparse24TensorCutlass(
         self.shape,
         func(
@@ -360,7 +360,7 @@ class Sparse24Tensor(torch.Tensor):
         prefer_col_major_output: bool = False,
         bias: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
-        raise NotImplementedError()
+        raise NotImplementedError
 
     __torch_function__ = torch._C._disabled_torch_function_impl
 
@@ -599,7 +599,9 @@ class _Sparsify24STEFunc(torch.autograd.Function):
 
 class _Sparsify24LikeFunc(torch.autograd.Function):
     @staticmethod
-    def forward(ctx, x: torch.Tensor, pattern: Sparse24Tensor, gradient: str, backend: str):  # type: ignore[override]
+    def forward(
+        ctx, x: torch.Tensor, pattern: Sparse24Tensor, gradient: str, backend: str
+    ):  # type: ignore[override]
         if not isinstance(pattern, Sparse24Tensor):
             raise NotImplementedError(
                 "`sparsify24_like`: `pattern` must be a sparse tensor"

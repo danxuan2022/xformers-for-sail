@@ -2,9 +2,11 @@
 #
 # This source code is licensed under the BSD license found in the
 # LICENSE file in the root directory of this source tree.
-import torch
 import triton
 import triton.language as tl
+
+import torch
+
 
 try:
     from triton.language.extra.cuda.libdevice import rsqrt

@@ -4,14 +4,12 @@
 # LICENSE file in the root directory of this source tree.
 
 
-from typing import List
-
 import torch
 import torch.nn as nn
 from torch.autograd.function import Function
 from torch.utils.checkpoint import get_device_states, set_device_states
-
 from xformers.components import RequiresWrappedInputs
+
 
 # CREDITS: Code adapted from
 # https://github.com/lucidrains/reformer-pytorch/blob/master/reformer_pytorch/reversible.py
@@ -26,8 +24,8 @@ class Deterministic(nn.Module):
         self.net = net
         self.cpu_state: torch.Tensor = torch.get_rng_state()
         self.cuda_in_fwd: bool = False
-        self.gpu_devices: List[int] = []
-        self.gpu_states: List[torch.Tensor] = []
+        self.gpu_devices: list[int] = []
+        self.gpu_states: list[torch.Tensor] = []
         self.wrap_inputs = isinstance(net, RequiresWrappedInputs)
 
     def record_rng(self, *args):
@@ -49,7 +47,7 @@ class Deterministic(nn.Module):
 
         else:  # pragma: no cover  # this is called in the backward pass, not picked up
             # This is analogous to checkpointing, reset the original random state
-            rng_devices: List[int] = []
+            rng_devices: list[int] = []
             if self.cuda_in_fwd:
                 rng_devices = self.gpu_devices
 

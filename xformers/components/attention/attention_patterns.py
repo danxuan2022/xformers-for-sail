@@ -5,11 +5,10 @@
 
 
 import math
-from typing import List
 
 import numpy as np
-import torch
 
+import torch
 from xformers.components.attention.sparsity_config import (
     BigBirdSparsityConfig,
     BSLongformerSparsityConfig,
@@ -89,9 +88,9 @@ def random_pattern(attn_size: int, sparsity: float) -> torch.Tensor:
 
 # 1d-specific cases
 def local_1d_pattern(attn_size: int, window_size: int) -> torch.Tensor:
-    assert (
-        window_size % 2 == 1
-    ), "The window size is assumed to be odd (counts self-attention + 2 wings)"
+    assert window_size % 2 == 1, (
+        "The window size is assumed to be odd (counts self-attention + 2 wings)"
+    )
     h_win_size = window_size // 2 + 1
     return local_nd_pattern(attn_size, distance=h_win_size, p=1.0)
 
@@ -202,9 +201,9 @@ def pattern_to_layout(mask: torch.Tensor, block_size: int) -> torch.Tensor:
         mask = mask.unsqueeze(0)
         _should_squeeze = True
 
-    assert (
-        mask.shape[1] % block_size == 0 and mask.shape[2] % block_size == 0
-    ), "We're only handling masks divisible by block_size"
+    assert mask.shape[1] % block_size == 0 and mask.shape[2] % block_size == 0, (
+        "We're only handling masks divisible by block_size"
+    )
 
     # Now mark the mask
     layout = torch.nn.functional.max_pool2d(
@@ -231,7 +230,7 @@ def alibi_pattern(threshold: float, mask_shape: torch.Size) -> torch.Tensor:
     # CREDITS: code snippet from Ofir Press, one of the authors
 
     def get_slopes(n: int):
-        def get_slopes_power_of_2(n: int) -> List[float]:
+        def get_slopes_power_of_2(n: int) -> list[float]:
             start = 2 ** (-(2 ** -(math.log2(n) - 3)))
             ratio = start
             return [start * ratio**i for i in range(n)]

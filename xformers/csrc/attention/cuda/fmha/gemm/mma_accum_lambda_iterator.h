@@ -7,11 +7,11 @@
  */
 #pragma once
 
-#include "cutlass/functional.h"
-#include "cutlass/gemm/warp/mma_simt_tile_iterator.h"
-#include "cutlass/gemm/warp/mma_tensor_op_tile_iterator_sm70.h"
-#include "cutlass/gemm/warp/mma_tensor_op_tile_iterator_sm80.h"
-#include "cutlass/matrix_shape.h"
+#include "cutlass2/functional.h"
+#include "cutlass2/gemm/warp/mma_simt_tile_iterator.h"
+#include "cutlass2/gemm/warp/mma_tensor_op_tile_iterator_sm70.h"
+#include "cutlass2/gemm/warp/mma_tensor_op_tile_iterator_sm80.h"
+#include "cutlass2/matrix_shape.h"
 
 /*
 TensorCores have different accumulator layouts.

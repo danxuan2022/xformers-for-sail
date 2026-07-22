@@ -5,7 +5,6 @@
 
 
 import torch
-
 from xformers.components.attention.core import scaled_dot_product_attention
 
 

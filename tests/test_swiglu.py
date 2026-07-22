@@ -7,15 +7,16 @@ import copy
 import functools
 import random
 from contextlib import nullcontext
-from typing import ContextManager, Optional, Sequence, cast
+from typing import cast, ContextManager, Optional, Sequence
 
 import pytest
-import torch
-
 import xformers
 import xformers.ops.swiglu_op as xsw
 
+import torch
+
 from .utils import disable_tf32
+
 
 cuda_only = pytest.mark.skipif(not torch.cuda.is_available(), reason="requires CUDA")
 if torch.cuda.is_available():
