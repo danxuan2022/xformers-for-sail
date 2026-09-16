@@ -41,11 +41,11 @@ endif()
 
 #################### xformers PPU static library ####################
 # Only compile the following files:
-# - attention/cuda/fmha/attention*.cu
+# - attention/cuda/fmha/attention_*_generic.cu (match 2.11 pattern, exclude cutlass_rand_uniform)
 # - autogen_ppu/impl/*.cu (PPU-generated CUTLASS kernels)
 
 # Attention kernel sources
-file(GLOB xformers_attention_cu "${XFORMERS_CSRC}/attention/cuda/fmha/attention*.cu")
+file(GLOB xformers_attention_cu "${XFORMERS_CSRC}/attention/cuda/fmha/attention_*_generic.cu")
 
 # PPU-generated CUTLASS kernel sources (exact glob from original commit)
 file(GLOB xformers_autogen_ppu_cu

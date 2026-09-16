@@ -289,8 +289,10 @@ def get_extensions():
         build_mem_effi_only = os.getenv("XFORMERS_BUILD_MEM_EFFI_ONLY", "1") == "1"
 
         if build_mem_effi_only:
-            # Match CMakeLists.txt: only compile attention*.cu + autogen_ppu/impl/*.cu
-            # Include attention.cpp for schema definitions (TORCH_SELECTIVE_SCHEMA)
+            # Match CMakeLists.txt: only compile attention_*_generic.cu + autogen_ppu/impl/*.cu
+            # Exclude attention_cutlass_rand_uniform.cu to avoid dangling impls (match 2.11)
+            # Include attention.cpp for operator schema definitions (TORCH_LIBRARY_FRAGMENT)
+            # which are required by TORCH_LIBRARY_IMPL in the .cu files to register operators
             sources = [
                 os.path.join(
                     extensions_dir, "attention", "attention.cpp"
@@ -298,7 +300,7 @@ def get_extensions():
             ]
             source_cuda = glob.glob(
                 os.path.join(
-                    extensions_dir, "attention/cuda/fmha", "attention*.cu"
+                    extensions_dir, "attention/cuda/fmha", "attention_*_generic.cu"
                 ),
                 recursive=False,
             )
