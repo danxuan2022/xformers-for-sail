@@ -6,7 +6,7 @@ on:
       pytorch-ref:
         description: 要编译的 pytorch-for-sail 分支 / ref（默认 v2.11.0-for-ci）
         type: string
-        default: v2.11.0
+        default: v2.11.0-for-ci
       ccache-maxsize:
         description: ccache 容量上限
         type: string
@@ -17,7 +17,7 @@ on:
         default: true
   push:
     branches:
-      - v0.0.27_for_pytorch
+      - xformers-for-ci
     paths:
       - '.github/workflows/ppu-build-refreash-cache.yml'
       - 'xformers/csrc/**'
