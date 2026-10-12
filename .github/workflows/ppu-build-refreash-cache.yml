@@ -241,7 +241,6 @@ jobs:
           docker exec -t "${container_name}" bash -c \
             "git config --global --add safe.directory ${REPO_DIR_IN_CONTAINER} \
              && git config --global --add safe.directory '*'"
-          # build_wheel.sh 优先读该文件作为 stamp 键
           docker exec -t "${container_name}" bash -c \
             "echo '${SOURCE_COMMIT}' > /tmp/ppu_source_commit"
 
